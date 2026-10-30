@@ -337,11 +337,11 @@ const clearDialog = () => `<div class="scrim" data-a="clearask"><div class="dlg"
   <div class="dact"><button class="raised" data-a="clearask" autofocus>Cancel</button><button class="danger-solid" data-a="clearyes">Clear</button></div></div></div>`;
 const keyDialog = () => `<div class="scrim" data-a="keycancel"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="kt">
   <h3 id="kt">Gemini API key</h3>
-  <p>${S.hasKey ? `Connected: <span class="keymask">••••••••••••${esc(S.keyTail)}</span>` : 'Add a free key so Gemini can tag and categorise your bookmarks.'}</p>
-  ${S.hasKey && tagRunning() ? '<p class="warn">Tagging is running. Removing the key stops it. Bookmarks already tagged stay tagged.</p>' : ''}
+  <p>${S.hasKey ? `Connected: <span class="keymask">••••••••••••${esc(S.keyTail)}</span>` : 'A free key lets Gemini tag your bookmarks.'}</p>
+  ${S.hasKey && tagRunning() ? '<p class="warn">Removing the key stops tagging.</p>' : ''}
   <form data-form="key" class="kform"><input class="well" type="password" name="k" placeholder="${S.hasKey ? 'Paste a new key to replace it' : 'Paste your Gemini key'}" aria-label="Gemini API key" autocomplete="off" autofocus>
   ${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}
-  <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a>
+  <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>
   <div class="dact"><button type="button" class="raised" data-a="keycancel">Cancel</button><button class="primary">Save</button></div></form>
   ${S.hasKey ? '<button class="clearlink" data-a="keyremove">Remove key</button>' : ''}</div></div>`;
 let toastTimer;

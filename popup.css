@@ -41,7 +41,7 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .wm{display:block;font-family:var(--font-display);font-size:var(--fs-md);font-weight:var(--fw-bold);letter-spacing:.015em;line-height:1;text-transform:uppercase}
 .sub{display:block;margin-top:3px;font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);line-height:1}
 .circle{width:var(--hit);height:var(--hit);border-radius:var(--r-md);display:grid;place-items:center;flex:none;color:var(--ink)}
-.circle:hover{background:var(--hover)}
+.circle:hover{background:var(--lime)}
 .circle[aria-current="page"]{background:var(--accent-tint);color:var(--accent-text)}
 .scroll>*{flex:none}
 /* illustration: last thing in the scroll; when the content is short it rests at the bottom of the panel */
@@ -58,10 +58,10 @@ main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;padding:
 
 /* controls */
 .sq{width:var(--hit);height:var(--hit);border-radius:var(--r-md);display:grid;place-items:center;flex:none;border:1px solid var(--line-2);color:var(--ink)}
-.sq:hover{background:var(--hover)}
+.sq:hover{background:var(--lime)}
 .sq.del{color:var(--danger)}
 .raised{height:var(--ctl);padding:0 var(--sp-4);border-radius:var(--r-md);border:1px solid var(--accent);color:var(--accent-text);font-weight:var(--fw-semibold);display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2)}
-.raised:hover{background:var(--accent-tint)}
+.raised:hover{background:var(--lime)}
 .sq.raised{padding:0;height:var(--hit);border-color:var(--line-2);color:var(--ink)}
 .primary{height:var(--ctl);padding:0 var(--sp-4);border-radius:var(--r-md);background:var(--accent);color:var(--on-accent);font-weight:var(--fw-semibold);display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-2)}
 .primary:hover{background:var(--accent-hover)}
@@ -81,7 +81,7 @@ main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;padding:
 .search input::placeholder{color:var(--ink-3)}
 .search input:focus-visible{outline:none}
 .search .clr{width:28px;height:28px;display:grid;place-items:center;border-radius:var(--r-sm);color:var(--ink-2);padding:0;border:0}
-.search .clr:hover{background:var(--hover);color:var(--ink)}
+.search .clr:hover{background:var(--lime);color:var(--ink)}
 .search .clr[hidden]{display:none}
 .search .clr svg{width:16px;height:16px}
 
@@ -99,7 +99,7 @@ main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;padding:
 /* rows */
 .list{display:grid;grid-template-columns:minmax(0,1fr);list-style:none;padding:0}
 .row{display:flex;align-items:stretch;position:relative;min-height:64px;border-bottom:1px solid var(--line)}
-.row:hover{background:var(--hover)}
+.row:hover{background:var(--sel)}
 .row.sel{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
 .row .main{flex:1;min-width:0;display:flex;align-items:center;gap:var(--sp-3);padding:8px var(--sp-2);text-align:left;color:var(--ink)}
 .fav{width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;flex:none;background:var(--tile);border:1px solid var(--line);font-family:var(--font-display);font-weight:var(--fw-bold);font-size:var(--fs-md);color:var(--accent-text);overflow:hidden}
@@ -111,7 +111,7 @@ main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;padding:
 .d{display:block;margin-top:3px;font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 mark{background:var(--match);color:var(--on-match);font-weight:inherit;border-radius:2px;padding:0 1px}
 .row .more-btn{width:40px;flex:none;display:grid;place-items:center;color:var(--accent-text)}
-.row .more-btn:hover{background:var(--accent-tint)}
+.row .more-btn:hover{background:var(--lime)}
 .row .more-btn .arrow{width:18px}
 .rt{display:flex;gap:6px;margin-top:5px;overflow:hidden;white-space:nowrap}
 .rt i{font-style:normal;flex:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;font-size:var(--fs-xs);font-weight:var(--fw-medium);line-height:1;padding:4px 7px;border-radius:4px;background:var(--accent-tint);color:var(--ink)}
@@ -166,13 +166,11 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .tags{align-items:flex-start}
 .tags .lbl{padding-top:5px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;flex:1}
-.chip{display:inline-flex;align-items:center;gap:var(--sp-1);height:28px;padding:0 var(--sp-2);border-radius:var(--r-sm);background:var(--accent-tint);color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
-.chip.ai{background:var(--match);color:var(--on-match)}
-.chip.ai svg.spark{width:12px;height:12px}
+.chip{display:inline-flex;align-items:center;gap:var(--sp-1);height:28px;padding:0 var(--sp-2);border-radius:var(--r-sm);border:1px solid var(--line-2);background:transparent;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-regular)}
 .chip button{display:grid;place-items:center;width:14px;height:14px;color:inherit;opacity:.65}
-.chip button:hover{opacity:1}
+.chip button:hover{opacity:1;color:var(--danger)}
 .chip button svg{width:11px;height:11px}
-.chip.add{width:28px;padding:0;justify-content:center;background:var(--bg);border:1px solid var(--line-2)}
+.chip.add{width:28px;padding:0;justify-content:center}
 .chip.add svg{width:14px;height:14px}
 .tagin{width:100px;height:28px;padding:0 var(--sp-2);border-radius:var(--r-sm);font-size:var(--fs-sm)}
 .meta{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-3);border-top:1px solid var(--line);padding-top:var(--sp-3)}
@@ -257,8 +255,6 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .hero .primary{width:100%;margin-top:var(--sp-1)}
 .hint{font-size:var(--fs-sm);color:var(--ink-3);margin:0}
 .link-row{width:100%;background:none;border:0;border-top:1px solid var(--line);cursor:pointer;font:inherit}
-.chip{font-style:normal;font-size:var(--fs-sm);color:var(--ink-3)}
-.chip.ok{color:var(--accent-text)}
 .chev{display:grid;place-items:center;color:var(--ink-3);transform:rotate(180deg);transition:transform .12s}
 .chev.open{transform:rotate(270deg)}
 .chev svg{width:16px;height:16px}

@@ -270,7 +270,7 @@ ${bookmarkList}
 
 The user asks: "${query}"
 
-Return a JSON array of the bookmark indices (the numbers in brackets) that best answer the question, using the tags and descriptions as well as the titles. Return at most 12, most relevant first. Only return the JSON array of numbers, nothing else.
+Return a JSON array of the bookmark indices (the numbers in brackets) that best answer the question, using the tags and descriptions as well as the titles. Return at most 12, most relevant first. Include a bookmark ONLY if the site genuinely answers the question or offers what is asked for; a different topic that merely shares a word does not count. If nothing is a good match, return []. Only return the JSON array of numbers, nothing else.
 
 Example response: [3, 7, 12, 0]`;
 
@@ -282,7 +282,8 @@ Example response: [3, 7, 12, 0]`;
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.1, maxOutputTokens: 256 }
-      })
+      }),
+      signal: AbortSignal.timeout(25000)
     }
   );
 
@@ -462,45 +463,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const apiKey = stored[API_KEY_STORAGE];
         const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
         const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
-        const requestedEngine = msg.engine || settings.searchEngine || 'auto';
+        let results = [], engineUsed = 'Local';
 
-        let results = [];
-        let engineUsed = 'Local';
-
-        // 0. Auto: answer short, plain searches instantly and offline. Longer natural-language questions,
-        //    or short ones the local match cannot answer, go on to the meaning search below.
-        if (requestedEngine === 'auto') {
-          const words = (String(msg.query).toLowerCase().match(/[\p{L}\p{N}'-]+/gu) || []).filter(t => t.length > 1 && !STOPWORDS.has(t));
-          if (words.length <= 2) {
-            const local = searchLocal(msg.query, bookmarks);
-            if (local.length && local[0].score >= LOCAL_CONFIDENT) { results = local; engineUsed = 'Local (instant)'; }
-          }
-        }
-
-        // 1. Google Embeddings Mode
-        if (results.length === 0 && (requestedEngine === 'embeddings' || (requestedEngine === 'auto' && Object.keys(embeddingsMap).length > 5)) && apiKey) {
+        // AI search: the meaning index picks a shortlist, Gemini reads the tags and summaries and keeps only what truly answers the question.
+        if (apiKey) {
           try {
-            results = await searchWithEmbeddings(msg.query, bookmarks, apiKey);
-            engineUsed = 'Google Embeddings';
+            let pool = bookmarks;
+            if (Object.keys(embeddingsMap).length > 5) {
+              const qv = await embedText(msg.query, apiKey);
+              if (qv) pool = bookmarks.map(bm => ({ bm, s: embeddingsMap[bm.id] ? cosineSimilarity(qv, embeddingsMap[bm.id]) : 0 }))
+                .sort((a, b) => b.s - a.s).slice(0, 60).map(x => x.bm);
+            }
+            results = await searchWithAI(msg.query, pool, apiKey);
+            engineUsed = 'Gemini';
           } catch (e) {
-            console.warn('Embeddings search failed, trying Generative fallback:', e);
+            console.warn('AI search failed, using keyword match:', e);
+            results = searchLocal(msg.query, bookmarks);
           }
-        }
-
-        // 2. Generative Gemini Mode
-        if (results.length === 0 && (requestedEngine === 'generative' || (requestedEngine === 'auto' && apiKey)) && apiKey) {
-          try {
-            results = await searchWithAI(msg.query, bookmarks, apiKey);
-            engineUsed = 'Gemini Flash';
-          } catch (e) {
-            console.warn('Generative AI search failed, falling back to local:', e);
-          }
-        }
-
-        // 3. Fallback to Local Search
-        if (results.length === 0) {
+        } else {
           results = searchLocal(msg.query, bookmarks);
-          engineUsed = 'Local';
         }
 
         sendResponse({ success: true, results, engineUsed });

@@ -45,7 +45,6 @@ const badgeFor = name => `assets/badges/${(BADGES.find(([re]) => re.test(name)) 
 const badge = (name, cls = '') => `<img class="badge ${cls}" src="${badgeFor(name)}" alt="" width="36" height="36">`;
 const ART = { home: ['banner-home', 298], results: ['strip-search', 216], collections: ['strip-collections', 194], details: ['strip-details', 172], settings: ['strip-settings', 208] };
 const artBand = () => { const [name, h] = ART[S.screen === 'results' && !S.q ? 'collections' : S.screen]; return `<div class="art" aria-hidden="true"><img src="assets/img/${name}.webp" alt="" width="880" height="${h}"></div>`; };
-const ENGINES = [['auto', 'Auto'], ['embeddings', 'Meaning (embeddings)'], ['generative', 'Gemini'], ['local', 'Keyword only']];
 const STOP = new Set('a an the of for to in on and or with about how what is are my that'.split(' '));
 const LIST_CAP = 200;
 
@@ -82,7 +81,7 @@ async function loadStatus() {
   const [st, se, k, tg] = await Promise.all([api({ type: 'GET_EMBEDDINGS_STATUS' }), api({ type: 'GET_SETTINGS' }), api({ type: 'GET_API_KEY' }), api({ type: 'GET_TAG_STATUS' })]);
   if (tg.success) S.tag = tg;
   if (st.success) S.embedded = st.embedded;
-  if (se.success) { S.settings = se.settings || {}; S.engine = S.settings.searchEngine || 'auto'; }
+  if (se.success) { S.settings = se.settings || {}; S.engine = 'auto'; }
   S.hasKey = !!(k.success && k.apiKey); S.keyTail = S.hasKey ? k.apiKey.slice(-4) : '';
 }
 const tagRunning = () => !!(S.tag?.job?.running && Date.now() - (S.tag.job.updatedAt || 0) < 120000);
@@ -262,7 +261,7 @@ const details = () => {
       <button class="raised" data-a="copy" data-id="${esc(b.id)}">${ic(S.copied === b.id ? 'check' : 'copy')} ${S.copied === b.id ? 'Copied' : 'Copy link'}</button></div>
     <section><div class="sumh"><h3 class="lbl">Summary</h3>${aiSum ? '<small>Summary by Gemini</small>' : ''}</div><p class="sum">${esc(m.summary || m.aiSummary || 'No summary yet.')} <button class="link" data-a="edit">${m.summary || m.aiSummary ? 'Edit' : 'Add one'}</button></p></section>
     <div class="field"><label class="lbl" for="colsel">Collection</label><div class="sel-wrap">${badge(cur || 'Folder', 'lead')}<select id="colsel" class="raised" data-a="setcol">${names.map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>${ic('down', 'tail')}</div></div>
-    <div class="field tags"><span class="lbl" id="tg">Tags</span><div class="chips" role="list" aria-labelledby="tg">${tags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}${aiTags.map(t => `<span class="chip ai" role="listitem" title="Added by Gemini">${ic('spark', 'spark')}${esc(t)}<button data-a="tagdel" data-k="ai" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}
+    <div class="field tags"><span class="lbl" id="tg">Tags</span><div class="chips" role="list" aria-labelledby="tg">${tags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}${aiTags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-k="ai" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}
       ${S.addTag ? `<form data-form="tag"><input class="tagin well" name="t" aria-label="New tag" maxlength="20" autocomplete="off"></form>` : `<button class="chip add raised" data-a="addtag" aria-label="Add tag">${ic('plus')}</button>`}</div></div>
     <dl class="meta"><div><dt>Saved</dt><dd>${fmt(b.dateAdded)}</dd></div><div><dt>Last accessed</dt><dd>${fmt(m.lastAccessed)}</dd></div><div><dt>URL</dt><dd title="${esc(b.url)}">${esc(b.url)}</dd></div></dl>`}
   </div>${artBand()}</div></main>`;
@@ -274,13 +273,12 @@ const settings = () => {
   const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0, running = tagRunning(), local = S.engine === 'local';
   const done = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 0;
   const tagPct = running && job.total ? done((job.done || 0) + (job.failed || 0), job.total) : done(tagged, n);
-  const all = n && tagged >= n, finishing = all && !running && !local && st !== 'ready' && st !== 'error';
+  const all = n && tagged >= n;
   const pct = tagPct;
   const line = (ok, text) => `<li class="${ok ? 'ok' : ''}"><i>${ok ? '✓' : ''}</i>${text}</li>`;
   const statusLine = !S.hasKey ? line(true, 'Keyword search is ready')
     : running ? line(false, `Tagging and categorising… ${num(job.done || 0)} of ${num(job.total || 0)}`)
     : job.error ? line(false, 'Stopped before finishing. Try again')
-    : finishing ? line(false, 'Finishing up…')
     : all ? line(true, 'All bookmarks tagged and categorised')
     : line(false, tagged ? `${num(tagged)} of ${num(n)} tagged and categorised` : 'Not started yet');
   const act = S.hasKey ? 'tagnow' : 'rebuild', busy = running || S.rebuilding || !n;
@@ -293,8 +291,7 @@ const settings = () => {
     <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>` : ''}
     <p class="hint">${S.hasKey ? 'One tap tags and categorises everything. You can close this panel while it works.' : 'Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.'}</p>
   </section>
-  <section class="sgroup"><h3>Search</h3>
-    <div class="srow"><span>How to search<small>Auto picks the fastest way for each search</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+  <section class="sgroup"><h3>Automatic</h3>
     <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
   </section>
   <section class="sgroup"><h3>Gemini</h3>
@@ -458,6 +455,7 @@ app.addEventListener('keydown', e => {
   render();
   if (tagRunning()) pollTags();
   else if (S.tag?.job?.running && S.hasKey) { await api({ type: 'START_TAGGING' }); S.tag.job.updatedAt = Date.now(); pollTags(); }   // a run was cut short (browser closed, worker stopped): pick up where it left off
+  else if (S.hasKey && BOOKMARKS.length && S.embedded < BOOKMARKS.length && !S.rebuilding) api({ type: 'GENERATE_EMBEDDINGS' }).then(() => loadStatus()).then(render);   // finish the meaning index in the background
   if (IN_EXT) {   // the panel stays open, so follow bookmark changes made elsewhere (after the background re-index)
     let t;
     const soon = () => { clearTimeout(t); t = setTimeout(async () => { if (S.editing || S.adding || S.addTag || S.screen === 'settings') return; await load(); await loadStatus(); render(); }, 4000); };

@@ -17,7 +17,6 @@ const AI_CATEGORIES = ['Design', 'AI Tools', 'Development', 'Video & Media', 'Pr
 const normalizeCategory = c => AI_CATEGORIES.find(x => x.toLowerCase() === String(c || '').trim().toLowerCase()) || 'Others';
 const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // fast, can read pages through the url_context tool
 const META_KEY = 'ai_bookmark_meta'; // { bookmarkId: { tags: [], summary, lastAccessed } }
-const DEFAULT_API_KEY = 'REMOVED';
 
 // Default settings
 const DEFAULT_SETTINGS = {
@@ -355,7 +354,7 @@ async function tagBookmarks({ force = false } = {}) {
   tagging = true;
   try {
     const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE, META_KEY]);
-    const apiKey = stored[API_KEY_STORAGE] || DEFAULT_API_KEY;
+    const apiKey = stored[API_KEY_STORAGE];
     if (!apiKey) throw new Error('Add a Gemini API key in Settings first.');
     const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
     let meta = stored[META_KEY] || {};
@@ -451,7 +450,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           bookmarks = await indexBookmarks();
         }
 
-        const apiKey = stored[API_KEY_STORAGE] || DEFAULT_API_KEY;
+        const apiKey = stored[API_KEY_STORAGE];
         const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
         const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
         const requestedEngine = msg.engine || settings.searchEngine || 'auto';
@@ -501,7 +500,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       else if (msg.type === 'GENERATE_EMBEDDINGS') {
         const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE]);
         const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
-        const apiKey = stored[API_KEY_STORAGE] || DEFAULT_API_KEY;
+        const apiKey = stored[API_KEY_STORAGE];
 
         if (!apiKey) {
           throw new Error('Please set a Gemini API key first to generate embeddings.');
@@ -599,7 +598,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
       else if (msg.type === 'GET_API_KEY') {
         const stored = await chrome.storage.local.get(API_KEY_STORAGE);
-        sendResponse({ success: true, apiKey: stored[API_KEY_STORAGE] || DEFAULT_API_KEY });
+        sendResponse({ success: true, apiKey: stored[API_KEY_STORAGE] });
       }
 
       else if (msg.type === 'GET_SETTINGS') {
@@ -645,7 +644,7 @@ function debouncedReindex(reason) {
     const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
     const meta = (await chrome.storage.local.get(META_KEY))[META_KEY] || {};
     const hasTagged = Object.values(meta).some(m => m.aiAt);
-    if ((apiKey || DEFAULT_API_KEY) && settings.autoTagNew !== false && hasTagged) {
+    if ((apiKey) && settings.autoTagNew !== false && hasTagged) {
       await tagBookmarks();   // only bookmarks without AI tags yet, so new saves
     } else if (apiKey && settings.autoEmbedNew) {
       batchEmbedBookmarks(bookmarks, apiKey).catch(e => console.warn('Background auto-embed error:', e));

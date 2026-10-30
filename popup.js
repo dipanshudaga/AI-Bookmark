@@ -192,12 +192,23 @@ const row = (b, o = {}) => {
 const message = (title, text, btn, art = false) => `<div class="empty">${art ? '<img class="spot" src="assets/img/empty-search.webp" alt="">' : ''}<b>${esc(title)}</b>${esc(text)}${btn ? `<button class="raised" data-a="${btn[0]}">${btn[1]}</button>` : ''}</div>`;
 const skeleton = () => `<div class="list" aria-busy="true">${'<div class="skel"></div>'.repeat(4)}</div>`;
 
+const obSeen = () => { try { return localStorage.getItem('ob_skip') === '1'; } catch { return false; } };
+const onboard = () => {
+  const tagged = S.tag?.tagged || 0, running = tagRunning();
+  if (obSeen() || tagged || S.loading) return '';
+  if (running) return `<section class="ob"><h3>Organising your bookmarks…</h3><p>You can keep searching. This runs in the background.</p></section>`;
+  return S.hasKey
+    ? `<section class="ob"><h3>Key saved. One last step</h3><p>Gemini reads each site and adds tags and a collection, so search finds more.</p><button class="primary" data-a="tagnow">${ic('spark')} Organise with Gemini</button></section>`
+    : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Add a free Gemini key to tag and sort your bookmarks. Keyword search works without it.</p>
+      <form class="keyline" data-form="key"><input class="well" type="password" name="k" placeholder="Paste Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></form>
+      <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a><small>Titles and links are sent to Google.</small></section>`;
+};
 const home = () => {
   if (S.loading) return `<main>${searchBox()}${skeleton()}</main>`;
   if (S.error) return `<main>${message('Couldn’t load bookmarks', S.error, ['retry', 'Try again'])}</main>`;
   if (!BOOKMARKS.length) return `<main>${searchBox()}${message('No bookmarks yet', 'Save a page in Chrome, or import bookmarks from Chrome’s bookmark manager, and they appear here.', ['import', 'Open bookmark manager'])}</main>`;
   const recent = [...BOOKMARKS].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 8);
-  return `<main>${searchBox()}
+  return `<main>${searchBox()}${onboard()}
     <div class="sec"><h2>Recently saved</h2><button data-a="all">See all ${ic('arrow')}</button></div>
     <div class="scroll"><ul class="list">${recent.map(b => row(b)).join('')}</ul>${artBand()}</div></main>`;
 };
@@ -258,42 +269,30 @@ const details = () => {
 
 const sw = (a, on, label) => `<button class="sw" role="switch" aria-checked="${on}" aria-label="${label}" data-a="${a}"><i></i></button>`;
 const settings = () => {
-  const ver = IN_EXT ? chrome.runtime.getManifest().version : '1.0.0', st = idxState(), n = BOOKMARKS.length;
-  const pct = n ? Math.min(100, Math.round(S.embedded / n * 100)) : 0, local = S.engine === 'local';
-  const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0;
-  const tagPct = tagRunning() && job.total ? Math.round(((job.done || 0) + (job.failed || 0)) / job.total * 100) : (n ? Math.round(tagged / n * 100) : 0);
-  const tagNote = tagRunning() ? `Organising ${num(job.done || 0)} of ${num(job.total || 0)}. You can close this panel.` : job.error ? `Last run: ${job.error}` : tagged ? 'Tags, summaries and collections come from Gemini.' : 'Not organised yet. Takes about a minute per 60 bookmarks.';
-  const note = { ready: 'Meaning index complete', indexing: 'Indexing… keep this open', partial: `Meaning index ${num(S.embedded)} of ${num(n)}`, error: 'Last indexing run failed' }[st];
-  const tagShort = tagRunning() ? `Organising ${num(job.done || 0)} of ${num(job.total || 0)}` : job.error ? 'Last run failed' : tagged ? 'Tags and collections' : 'Not organised yet';
-  const bar = (label, v) => `<div class="barrow"><div class="bar" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${v}"><i style="width:${v}%"></i></div><span>${v}%</span></div>`;
+  const ver = IN_EXT ? chrome.runtime.getManifest().version : '1.0.0', n = BOOKMARKS.length;
+  const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0, running = tagRunning();
+  const pct = running && job.total ? Math.round(((job.done || 0) + (job.failed || 0)) / job.total * 100) : (n ? Math.round(tagged / n * 100) : 0);
+  const sub = running ? `Organising ${num(job.done || 0)} of ${num(job.total || 0)}…` : job.error ? 'Last run failed. Try again.' : `${num(tagged)} organised with Gemini`;
+  const auto = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false;
+  const chev = open => `<span class="chev ${open ? 'open' : ''}">${ic('back')}</span>`;
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
-  <section class="sgroup"><h3>Index &amp; AI</h3>
-    <div class="statpair">
-      <div class="status compact"><h4>Index status</h4>
-        <div><b>${num(n)}</b><small>${n === 1 ? 'bookmark' : 'bookmarks'}</small></div>
-        <p class="note ${st === 'error' ? 'err' : ''}">${local ? 'Keyword search only' : note}</p>
-        ${local ? '' : bar('Meaning index', pct)}
-        <div class="st-act"><button class="raised sm" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button></div></div>
-      <div class="status compact"><h4>AI organise</h4>
-        <div><b>${num(tagged)}</b><small>of ${num(n)} organised</small></div>
-        <p class="note ${job.error && !tagRunning() ? 'err' : ''}" title="${esc(tagNote)}">${esc(tagShort)}</p>
-        ${bar('Tagging progress', tagPct)}
-        <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Organising…' : (tagged ? 'Organise new' : 'Organise with Gemini')}</button></div></div>
-    </div>
+  <section class="hero">
+    <div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
+    <p class="${job.error && !running ? 'err' : ''}">${esc(sub)}</p>
+    <div class="barrow"><div class="bar" role="progressbar" aria-label="Organised" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
+    <button class="primary" data-a="tagnow" ${running || !n || !S.hasKey ? 'disabled' : ''}>${ic('spark')} ${running ? 'Organising…' : (tagged ? 'Organise new' : 'Organise with Gemini')}</button>
+    ${S.hasKey ? '' : '<p class="hint">Add a Gemini key below to start.</p>'}
   </section>
-  <section class="sgroup"><h3>Search</h3>
-    <div class="srow"><span>Search engine<small>Auto: instant for short searches, Gemini for longer questions</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-    <div class="srow"><span>Auto index new bookmarks<small>Index new saves as they happen</small></span>${sw('autoindex', S.settings.autoEmbedNew !== false, 'Auto index new bookmarks')}</div>
-    <div class="srow"><span>Auto-organise new bookmarks<small>Tags and files new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-organise new bookmarks')}</div>
-    <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Create a key in Google AI Studio ↗</a></form>
-    <p class="note2">Gemini reads each site to write tags, a one-line summary and pick a collection. Titles and links are sent to Google.</p>
+  <section class="sgroup">
+    <div class="srow"><span>Keep up to date</span>${sw('auto', auto, 'Keep index and organisation up to date')}</div>
+    <div class="srow"><span>Search</span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <button class="srow link-row" data-a="keyopen" aria-expanded="${!!S.keyOpen}"><span>Gemini key</span><em class="chip ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Connected' : 'Not set'}</em>${chev(S.keyOpen)}</button>
+    ${S.keyOpen ? `<form class="keyform" data-form="key"><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a key from Google AI Studio ↗</a>${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}</form>` : ''}
+    <button class="srow link-row" data-a="moreopen" aria-expanded="${!!S.moreOpen}"><span>Data</span>${chev(S.moreOpen)}</button>
+    ${S.moreOpen ? `<div class="dbtns"><button class="raised" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button><button class="raised" data-a="export">Export</button><button class="raised" data-a="import">Import</button></div>
+    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : `<button class="clearlink" data-a="clearask">Clear all data</button>`}` : ''}
   </section>
-  <section class="sgroup"><h3>Data &amp; privacy</h3>
-    <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
-    ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all data</button>`}</div>
-    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear the index, tags, summaries and custom collections? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
-  </section>
-  <p class="about">v${esc(ver)} · AI Bookmarks</p>
+  <p class="about">Titles and links go to Google when you use Gemini. · v${esc(ver)}</p>
   </div>${artBand()}</div></main>`;
 };
 
@@ -375,7 +374,10 @@ app.addEventListener('click', async e => {
     case 'addtag': S.addTag = true; render(); return $('.tagin', app)?.focus();
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
-    case 'autotag': await saveSettings({ autoTagNew: S.settings.autoTagNew === false }); return render();
+    case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
+    case 'obskip': try { localStorage.setItem('ob_skip', '1'); } catch { /* storage unavailable */ } return render();
+    case 'keyopen': S.keyOpen = !S.keyOpen; S.keyNote = ''; return render();
+    case 'moreopen': S.moreOpen = !S.moreOpen; S.confirmClear = false; return render();
     case 'rebuild': return rebuild();
     case 'retry': S.loading = true; S.error = null; render(); await refresh(); return;
     case 'retry-search': return runSearch(S.q);
@@ -383,7 +385,6 @@ app.addEventListener('click', async e => {
     case 'export': return exportJson();
     case 'clearask': S.confirmClear = !S.confirmClear; return render();
     case 'clearyes': { await api({ type: 'CLEAR_DATA' }); S.confirmClear = false; META = {}; say('Local data cleared'); await refresh(); return; }
-    case 'autoindex': await saveSettings({ autoEmbedNew: S.settings.autoEmbedNew === false }); return render();
   }
 });
 app.addEventListener('change', async e => {

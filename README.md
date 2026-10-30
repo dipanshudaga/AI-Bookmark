@@ -82,9 +82,11 @@ Your API key stays in your browser. The extension sends it only to Google. Read 
 ├── assets/                # Pictures and collection badges
 ├── fonts/                 # Inter, Space Grotesk, JetBrains Mono
 ├── icons/                 # Extension icons
+├── store/                 # Store screenshots and promo images
 ├── DESIGN.md              # Design rules
 ├── PRIVACY.md             # Privacy policy
-└── CHROME_WEB_STORE.md    # Everything needed for the store page
+├── CHROME_WEB_STORE.md    # Everything needed for the store page
+└── LICENSE                # MIT
 ```
 
 ## Develop

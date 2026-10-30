@@ -303,3 +303,14 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .hero .raised:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
 .foot-text{margin-top:auto;padding-top:var(--sp-5);display:grid;gap:var(--sp-3)}.foot-text+.art{margin-top:0;padding-top:var(--sp-3)}.foot-text .note2,.foot-text .about{margin:0}
 .foot-text{text-align:center}
+.drow{display:flex;align-items:center;gap:var(--sp-3);width:100%;padding:var(--sp-3) 0;border-top:1px solid var(--line);text-align:left;color:var(--ink)}
+.sgroup h3+.drow{border-top:0}
+.drow>svg:first-child{width:20px;height:20px;flex:none;color:var(--accent-text)}
+.drow>span{flex:1;min-width:0;display:flex;flex-direction:column}
+.drow b{font-weight:var(--fw-regular);font-size:var(--fs-base)}
+.drow small{font-size:var(--fs-sm);color:var(--ink-3);margin-top:2px}
+.drow .go{width:16px;height:16px;flex:none;color:var(--ink-3)}
+.drow:hover{background:var(--sel)}
+.drow.bad,.drow.bad>svg:first-child{color:var(--danger)}
+.drow.bad small{color:var(--ink-3)}
+.sgroup .confirm{margin-top:var(--sp-2)}

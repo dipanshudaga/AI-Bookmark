@@ -311,9 +311,10 @@ ${S.hasKey && !S.keyEdit
       : `<form class="srow col" data-form="key"><span>API key<small>${esc(S.keyNote || (S.hasKey ? 'Paste a new key to replace the saved one.' : 'Not connected yet.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste your Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button>${S.hasKey ? '<button type="button" class="raised sm" data-a="keycancel">Cancel</button>' : ''}</div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>`}
   </section>
   <section class="sgroup"><h3>Your data</h3>
-    <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
-    ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all</button>`}</div>
-    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
+    <button class="drow" data-a="export">${ic('upload')}<span><b>Export bookmarks</b><small>HTML file, opens in any browser</small></span>${ic('chev', 'go')}</button>
+    <button class="drow" data-a="import">${ic('download')}<span><b>Import bookmarks</b><small>From a bookmarks file</small></span>${ic('chev', 'go')}</button>
+    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Your bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>`
+      : `<button class="drow bad" data-a="clearask">${ic('trash')}<span><b>Clear tags and index</b><small>Your bookmarks stay</small></span></button>`}
   </section>
   </div><div class="foot-text"><p class="note2">Titles and links are sent to Google when you use Gemini.</p><p class="about">v${esc(ver)} · AI Bookmarks</p></div>${artBand()}</div></main>`;
 };

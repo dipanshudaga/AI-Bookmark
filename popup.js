@@ -276,27 +276,38 @@ const settings = () => {
   const tagPct = running && job.total ? done((job.done || 0) + (job.failed || 0), job.total) : done(tagged, n);
   const all = n && tagged >= n;
   const pct = tagPct;
-  const line = (ok, text) => `<li class="${ok ? 'ok' : ''}"><i>${ok ? '✓' : ''}</i>${text}</li>`;
   const fresh = tagged > 0 && job.total > 0 && job.total < n;
   const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
-  const statusLine = !S.hasKey ? line(true, 'Keyword search is ready')
-    : running && !job.total ? line(false, 'Looking for new bookmarks…')
-    : running ? line(false, fresh ? `Tagging ${num(job.total)} new ${job.total === 1 ? 'bookmark' : 'bookmarks'}… ${num(job.done || 0)} of ${num(job.total)}` : `Tagging and categorising… ${num(job.done || 0)} of ${num(job.total)}`)
-    : job.error ? line(false, 'Stopped before finishing. Try again')
-    : caughtUp ? line(true, 'You’re all caught up. Nothing new to tag.')
-    : all ? line(true, 'All bookmarks tagged and categorised')
-    : line(false, tagged ? `${num(tagged)} of ${num(n)} tagged and categorised` : 'Not started yet');
-  const art = job.error && !running ? 'state-error' : all && !running ? 'state-done' : 'state-working';
-  const act = S.hasKey ? 'tagnow' : 'rebuild', busy = running || S.rebuilding || !n;
-  const label = running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : S.hasKey ? (tagged && tagged >= n ? 'Check for new bookmarks' : 'Get everything ready') : 'Update search';
+  const statusText = !S.hasKey ? 'Keyword search is ready'
+    : running && !job.total ? 'Looking for new bookmarks…'
+    : running ? (fresh ? `Tagging ${num(job.total)} new ${job.total === 1 ? 'bookmark' : 'bookmarks'}… ${num(job.done || 0)} of ${num(job.total)}` : `Tagging… ${num(job.done || 0)} of ${num(job.total)}`)
+    : job.error ? 'Stopped before finishing'
+    : caughtUp ? 'Nothing new to tag'
+    : all ? 'All caught up'
+    : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
+  const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
+  // the filing bar: one segment per collection; hatched = not tagged yet
+  const tally = {};
+  BOOKMARKS.forEach(b => { const c = S.hasKey ? META[b.id]?.aiCategory : (b.categories?.[0] || 'Others'); if (c) tally[c] = (tally[c] || 0) + 1; });
+  const filed = Object.values(tally).reduce((s, v) => s + v, 0);
+  const top = Object.entries(tally).filter(([c]) => c !== 'Others').sort((x, y) => y[1] - x[1]).slice(0, 4);
+  const PAL = ['var(--accent)', 'var(--lime)', '#8d82d8', '#1e1a3a'];
+  const rest = filed - top.reduce((s, [, v]) => s + v, 0);
+  const pctOf = v => n ? (v / n * 100).toFixed(2) : 0;
+  const segs = [...top.map(([c, v], i) => ({ c, v, bg: PAL[i] })), ...(rest ? [{ c: 'Others', v: rest, bg: 'var(--accent-tint)' }] : [])];
+  const bar = `<div class="fbar" role="img" aria-label="${esc(statusText)}">${segs.map(s => `<i style="width:${pctOf(s.v)}%;background:${s.bg}" title="${esc(s.c)} ${s.v}"></i>`).join('')}${n - filed > 0 ? `<i class="hatch" style="width:${pctOf(n - filed)}%"></i>` : ''}</div>`;
+  const legend = !S.hasKey ? 'Grouped by keywords' : n - filed > 0 ? `${num(filed)} of ${num(n)} tagged` : '';
+  const keys = segs.map(s => `<span><b style="background:${s.bg}"></b>${esc(s.c)} ${num(s.v)}</span>`).join('');
+  const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
+  const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
-    <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
-    <ul class="checks">${statusLine}</ul></div>${S.hasKey ? `<img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true">` : ''}</div>
-    ${S.hasKey ? `<div class="bar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
-    <button class="${all && !running ? 'raised' : 'primary'}" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>
-    <p class="hint">${esc(running ? 'You can close this panel while it works.' : job.error ? 'Your progress is saved. Try again.' : all ? (S.settings.autoTagNew !== false ? 'New saves are added automatically.' : 'Run this after saving new bookmarks.') : 'One tap tags and categorises everything.')}</p>`
-      : `<p class="hint">Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.</p>`}
+    <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
+      <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
+    ${bar}
+    <div class="fkeys">${legend ? `<span class="fl">${esc(legend)}</span>` : ''}${keys}</div>
+    <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
+    ${S.hasKey ? '' : '<p class="hint">Add a free key to search by meaning and add tags, summaries and smarter collections.</p>'}
   </section>
   <section class="sgroup"><h3>Automatic</h3>
     <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
@@ -400,6 +411,7 @@ app.addEventListener('click', async e => {
     case 'keychange': S.keyEdit = true; S.keyNote = ''; return render();
     case 'keycancel': S.keyEdit = false; return render();
     case 'keyremove': await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyEdit = false; S.keyNote = 'Key removed.'; say('Key removed'); return render();
+    case 'keyfocus': $('input[name=k]', app)?.scrollIntoView({ block: 'center' }); $('input[name=k]', app)?.focus(); return;
     case 'obskip': try { localStorage.setItem('ob_skip', '1'); } catch { /* storage unavailable */ } return render();
     case 'keyopen': S.keyOpen = !S.keyOpen; S.keyNote = ''; return render();
     case 'moreopen': S.moreOpen = !S.moreOpen; S.confirmClear = false; return render();

@@ -247,7 +247,7 @@ const collections = () => {
   const rows = [{ name: 'All Bookmarks', n: BOOKMARKS.length, key: null },
     ...Object.entries(CATS).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name, l]) => ({ name, n: l.length, key: name }))];
   return `<main><div class="ttl"><h2>Collections</h2></div>
-        <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button>${r.key && CUSTOM.includes(r.key) ? `<button class="rmcol" data-a="rmcol" data-k="${esc(r.key)}" aria-label="Delete collection ${esc(r.key)}">${ic('trash')}</button>` : ''}</li>`).join('')}</ul>${artBand()}</div></main>`;
+        <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${r.key && S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button>${r.key && CUSTOM.includes(r.key) ? `<button class="rmcol" data-a="rmcol" data-k="${esc(r.key)}" aria-label="Delete collection ${esc(r.key)}">${ic('trash')}</button>` : ''}</li>`).join('')}</ul>${artBand()}</div></main>`;
 };
 
 const details = () => {

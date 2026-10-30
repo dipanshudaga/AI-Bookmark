@@ -379,3 +379,7 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .rt i.m{background:var(--tile);color:var(--ink-2)}
 /* collection rows keep their own centred layout */
 .crow .main{align-items:center;padding:var(--sp-2) var(--sp-2)}
+/* status card: the count and status sit centred against the picture, a little clear of the button */
+.hero-top{align-items:center}
+.hero-art{margin-bottom:0}
+.hero-l{padding-bottom:var(--sp-1)}

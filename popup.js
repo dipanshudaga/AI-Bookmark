@@ -292,7 +292,9 @@ const settings = () => {
     : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
   const cnt = !all && (running || tagged) ? `${num(tagged)} of ${num(n)}${running ? '' : ' tagged'}` : '';
-  const bar = `<div class="fbar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
+  const cells = Math.min(n, 240), filled = n ? Math.floor(tagged / n * cells) : 0;   // one square per bookmark (grouped once there are more than 240)
+  const mosaic = `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd"' : ''}></i>`).join('')}</div>`;
+  const bar = `${mosaic}<div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">

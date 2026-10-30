@@ -194,7 +194,8 @@ const row = (b, o = {}) => {
   <button class="more-btn" data-a="detail" data-id="${esc(b.id)}" aria-label="Details for ${esc(name)}" title="Details">${ic('chev', 'arrow')}</button></li>`;
 };
 const message = (title, text, btn, art = false) => `<div class="empty">${art ? '<img class="spot" src="assets/img/empty-search.webp" alt="">' : ''}<b>${esc(title)}</b>${esc(text)}${btn ? `<button class="raised" data-a="${btn[0]}">${btn[1]}</button>` : ''}</div>`;
-const skeleton = () => `<div class="list" aria-busy="true">${'<div class="skel"></div>'.repeat(4)}</div>`;
+const SKW = [[62, 34], [48, 28], [70, 38], [55, 30], [66, 32]];
+const skeleton = () => `<div class="list" aria-busy="true" aria-label="Loading">${SKW.map(([a, b], i) => `<div class="skrow" style="--d:${i * 0.12}s"><i class="skb tile"></i><div class="sktx"><i class="skb" style="width:${a}%"></i><i class="skb sm" style="width:${b}%"></i><div class="skpills"><i class="skb pill"></i><i class="skb pill"></i><i class="skb pill"></i></div></div></div>`).join('')}</div>`;
 
 const obSeen = () => { try { return localStorage.getItem('ob_skip') === '1'; } catch { return false; } };
 const onboard = () => {
@@ -238,7 +239,7 @@ const resultsScreen = () => {
   else body = `<ul class="list" role="list">${vis.map((x, i) => row(x, { q: S.q, sel: i === S.sel })).join('')}</ul>${r.length > LIST_CAP ? `<p class="more">Showing ${LIST_CAP} of ${r.length}. Search to narrow down.</p>` : ''}`;
   const sorts = [['relevance', 'Relevance'], ['recent', 'Recently saved'], ['accessed', 'Recently accessed'], ['title', 'Title']].filter(o => S.q || o[0] !== 'relevance');
   return `<main>${searchBox()}
-    <div class="sec"><span class="count">${S.loading ? 'Searching…' : label}</span><label class="sort"><span class="sv" aria-hidden="true">${(sorts.find(o => o[0] === S.sort) || sorts[0])[1]}</span>${ic('down')}<select data-a="sort" aria-label="Sort by">${sorts.map(o => `<option value="${o[0]}" ${S.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></label></div>
+    <div class="sec"><span class="count">${S.loading ? 'Searching your bookmarks…' : label}</span>${S.loading ? '' : `<label class="sort"><span class="sv" aria-hidden="true">${(sorts.find(o => o[0] === S.sort) || sorts[0])[1]}</span>${ic('down')}<select data-a="sort" aria-label="Sort by">${sorts.map(o => `<option value="${o[0]}" ${S.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></label>`}</div>
     <div class="scroll">${body}${artBand()}</div></main>`;
 };
 

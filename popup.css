@@ -343,3 +343,13 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 @keyframes mpulse{50%{transform:scale(1.08)}}
 .kform{display:grid;gap:var(--sp-3)}.kform .keylink{margin:0}.dlg .clearlink{justify-self:center;padding:0}
 .kform input{height:var(--ctl);padding:0 var(--sp-3);font-size:var(--fs-base);width:100%}
+.skrow{display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-3) var(--sp-2);border-bottom:1px solid var(--line)}
+.sktx{flex:1;min-width:0;display:grid;gap:8px}
+.skb{display:block;height:14px;border-radius:6px;background:linear-gradient(90deg,var(--accent-tint) 25%,#f7f6fc 45%,var(--accent-tint) 65%);background-size:220% 100%;animation:skim 1.3s ease-in-out infinite;animation-delay:var(--d,0s)}
+.skb.tile{width:40px;height:40px;border-radius:var(--r-md);flex:none}
+.skb.sm{height:11px}
+.skpills{display:flex;gap:6px;margin-top:2px}
+.skb.pill{width:52px;height:18px;border-radius:5px}
+.skb.pill:nth-child(2){width:64px}.skb.pill:nth-child(3){width:44px}
+@keyframes skim{from{background-position:120% 0}to{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.skb{animation:none}}

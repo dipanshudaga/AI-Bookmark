@@ -26,7 +26,22 @@ const P = {
 };
 const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
 const ribbon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h5.2L12 5.8 13.8 3H19v18l-7-4.8L5 21z"/></svg>';
-const CAT_ICON = { 'Design': 'palette', 'AI Tools': 'spark', 'AI Agents': 'spark', 'Development': 'code', 'Video & Media': 'play', 'Prompts & Resources': 'book', 'Productivity': 'bag', 'Archives & Museums': 'box', 'Data Visualization': 'grid', 'Inspiration': 'bulb', 'Reading': 'book', 'Work': 'bag', 'Archived': 'box' };
+const BADGES = [
+  [/^all bookmarks$/i, 'all'], [/^archived$/i, 'archived'], [/prompt|resource|template|guide|\bdocs?\b|document/i, 'docs'],
+  [/agent|automation|workflow/i, 'ai-agents'], [/\bai\b|\bllm|gpt|gemini|claude|openai/i, 'ai-tools'], [/inspir|\bideas?\b|moodboard/i, 'inspiration'],
+  [/design|\bui\b|\bux\b|creative|illustrat|graphic|colou?r/i, 'design'], [/\bdev|code|program|github|\bapi\b|software|engineer|\bcss\b/i, 'development'],
+  [/video|film|movie|youtube|stream|media|animation|motion/i, 'video'], [/music|audio|podcast|sound|song/i, 'music'],
+  [/read|article|news|blog|magazine|essay/i, 'reading'], [/shop|store|\bbuy|deal|market/i, 'shopping'], [/cloth|fashion|wear|apparel|outfit|shoe/i, 'fashion'],
+  [/travel|\bmaps?\b|places?|trip|hotel|city/i, 'travel'], [/social|communit|chat|forum|reddit|twitter/i, 'social'],
+  [/product|task|todo|notion|calendar|project|\bwork\b|office/i, 'productivity'], [/data|chart|analytic|research|stat|visuali/i, 'data'],
+  [/learn|course|educat|tutorial|school|study|academ/i, 'learning'], [/photo|camera|picture|\bimages?\b/i, 'photography'],
+  [/\bgames?\b|gaming/i, 'games'], [/financ|money|invest|crypto|bank|econom|stock/i, 'finance'], [/food|recipe|cook|coffee|restaurant|drink/i, 'food'],
+  [/font|\btype|typo|letter|foundry/i, 'fonts'], [/tool|util|\bapps?\b/i, 'tools'], [/archive|museum|histor|librar/i, 'archives']
+];
+const badgeFor = name => `assets/badges/${(BADGES.find(([re]) => re.test(name)) || [0, 'folder'])[1]}.webp`;
+const badge = (name, cls = '') => `<img class="badge ${cls}" src="${badgeFor(name)}" alt="" width="36" height="36">`;
+const ART = { home: 'banner-home', results: 'strip-search', collections: 'strip-collections', details: 'strip-details', settings: 'strip-settings' };
+const artBand = () => `<div class="art ${S.screen === 'home' ? 'tall' : ''}" aria-hidden="true"><img src="assets/img/${ART[S.screen === 'results' && !S.q ? 'collections' : S.screen]}.webp" alt=""></div>`;
 const ENGINES = [['auto', 'Auto'], ['embeddings', 'Meaning (embeddings)'], ['generative', 'Gemini'], ['local', 'Keyword only']];
 const STOP = new Set('a an the of for to in on and or with about how what is are my that'.split(' '));
 const LIST_CAP = 200;
@@ -44,14 +59,9 @@ let BOOKMARKS = [], CATS = {}, META = {};
 const S = {
   screen: 'home', from: 'home', q: '', draft: '', filter: 'All', colOnly: null, lastCol: null, sort: 'relevance', sel: 0, results: [],
   bm: null, loading: true, error: null, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false, copied: null,
-  engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '', flat: false, noFav: false,
-  theme: 'dark', tag: null, tagTimer: null
+  engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '', noFav: false,
+  tag: null, tagTimer: null
 };
-const themeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: light)') : null;
-function applyTheme() { document.documentElement.dataset.theme = S.theme === 'system' ? (themeQuery?.matches ? 'light' : 'dark') : S.theme; }
-try { S.theme = localStorage.getItem('theme') || 'dark'; } catch { /* storage unavailable */ }
-applyTheme();
-themeQuery?.addEventListener?.('change', applyTheme);
 let seq = 0, focusSearch = false, say = () => {};
 
 async function load() {
@@ -128,8 +138,8 @@ const statusFooter = () => {
 };
 const hintFooter = () => `<footer class="foot hint"><span>Use <kbd>↑</kbd> <kbd>↓</kbd> to navigate</span><span><kbd>↵</kbd> Open · <kbd>⌘C</kbd> Copy link</span></footer>`;
 const header = () => `<header class="hdr">
-  <button class="brand" data-a="home" aria-label="AI Bookmarks, go to home"><span class="circle raised">${ribbon}</span>
-    <span><span class="wm">AI BOOKMARKS</span><span class="sub">PERSONAL INTERNET ARCHIVE</span></span></button>
+  <button class="brand" data-a="home" aria-label="AI Bookmarks, go to home"><img class="logo" src="assets/img/logo.webp" alt="" width="28" height="28">
+    <span><span class="wm">AI BOOKMARKS</span><span class="sub">Personal internet archive</span></span></button>
   <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('grid')}</button>
   <button class="circle" data-a="settings" aria-label="Settings" ${S.screen === 'settings' ? 'aria-current="page"' : ''}>${ic('gear')}</button></header>`;
 const searchBox = () => `<form class="cons" data-form="search" role="search"><div class="search well">${ic('search')}
@@ -148,7 +158,7 @@ const row = (b, o = {}) => {
   <button class="main" data-a="open" data-id="${esc(b.id)}" title="${esc(name + ' — ' + b.url)}">${fav(b)}<span class="txt"><span class="t">${o.q ? hl(name, o.q) : esc(name)}</span><span class="d">${esc(host(b.url))}</span>${tags.length ? `<span class="rt">${tags.map(([t, m]) => `<i${m ? ' class="m"' : ''}>${o.q ? hl(t, o.q) : esc(t)}</i>`).join('')}</span>` : ''}</span></button>
   <button class="more-btn" data-a="detail" data-id="${esc(b.id)}" aria-label="Details for ${esc(name)}" title="Details">${ic('chev', 'arrow')}</button></li>`;
 };
-const message = (title, text, btn) => `<div class="empty"><b>${esc(title)}</b>${esc(text)}${btn ? `<button class="raised" data-a="${btn[0]}">${btn[1]}</button>` : ''}</div>`;
+const message = (title, text, btn, art = false) => `<div class="empty">${art ? '<img class="spot" src="assets/img/empty-search.webp" alt="">' : ''}<b>${esc(title)}</b>${esc(text)}${btn ? `<button class="raised" data-a="${btn[0]}">${btn[1]}</button>` : ''}</div>`;
 const skeleton = () => `<div class="list" aria-busy="true">${'<div class="skel"></div>'.repeat(4)}</div>`;
 
 const home = () => {
@@ -176,7 +186,7 @@ const resultsScreen = () => {
   let body;
   if (S.loading) body = skeleton();
   else if (S.error) body = message('Search failed', S.error, ['retry-search', 'Try again']);
-  else if (!r.length) body = S.q ? message(`No matches for “${S.q}”`, 'Try fewer words, or describe what the page was about instead of its title.', ['clear', 'Clear search'])
+  else if (!r.length) body = S.q ? message(`No matches for “${S.q}”`, 'Try fewer words, or describe what the page was about instead of its title.', ['clear', 'Clear search'], true)
     : S.colOnly ? message(`${S.colOnly} is empty`, 'Open a bookmark and move it here from its details.', ['cols', 'Back to collections'])
     : message('No bookmarks yet', 'Save a page in Chrome and it appears here.');
   else body = `<ul class="list" role="list">${vis.map((x, i) => row(x, { q: S.q, sel: i === S.sel })).join('')}</ul>${r.length > LIST_CAP ? `<p class="more">Showing ${LIST_CAP} of ${r.length}. Search to narrow down.</p>` : ''}`;
@@ -187,11 +197,11 @@ const resultsScreen = () => {
 };
 
 const collections = () => {
-  const rows = [{ name: 'All Bookmarks', icon: 'grid', n: BOOKMARKS.length, key: null },
-    ...Object.entries(CATS).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name, l]) => ({ name, icon: CAT_ICON[name] || 'folder', n: l.length, key: name }))];
+  const rows = [{ name: 'All Bookmarks', n: BOOKMARKS.length, key: null },
+    ...Object.entries(CATS).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name, l]) => ({ name, n: l.length, key: name }))];
   return `<main><div class="ttl"><h2>Your collections</h2><button class="plus circle primary" data-a="newc" aria-label="Create collection" aria-expanded="${S.adding}">${ic('plus')}</button></div>
     ${S.adding ? `<form class="newc" data-form="newc"><input class="well" name="n" placeholder="Collection name" aria-label="Collection name" maxlength="28" autocomplete="off"><button class="primary">Create</button></form>` : ''}
-    <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}"><span class="fav">${ic(r.icon)}</span><span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button></li>`).join('')}</ul></div></main>`;
+    <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button></li>`).join('')}</ul></div></main>`;
 };
 
 const details = () => {
@@ -208,8 +218,8 @@ const details = () => {
     <div class="ident">${fav(b)}<div><h2>${esc(b.title || host(b.url))}</h2><span class="d">${esc(host(b.url))}</span></div></div>
     <div class="btns"><button class="primary" data-a="open" data-id="${esc(b.id)}">Open link ${ic('open')}</button>
       <button class="raised" data-a="copy" data-id="${esc(b.id)}">${ic(S.copied === b.id ? 'check' : 'copy')} ${S.copied === b.id ? 'Copied' : 'Copy link'}</button></div>
-    <section><h3 class="lbl">Summary</h3><p class="sum">${esc(m.summary || m.aiSummary || 'No summary yet.')} <button class="link" data-a="edit">${m.summary || m.aiSummary ? 'Edit' : 'Add one'}</button>${aiSum ? '<small>Summary by Gemini</small>' : ''}</p></section>
-    <div class="field"><label class="lbl" for="colsel">Collection</label><div class="sel-wrap">${ic(CAT_ICON[cur] || 'folder', 'lead')}<select id="colsel" class="raised" data-a="setcol">${names.map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>${ic('down', 'tail')}</div></div>
+    <section><div class="sumh"><h3 class="lbl">Summary</h3>${aiSum ? '<small>Summary by Gemini</small>' : ''}</div><p class="sum">${esc(m.summary || m.aiSummary || 'No summary yet.')} <button class="link" data-a="edit">${m.summary || m.aiSummary ? 'Edit' : 'Add one'}</button></p></section>
+    <div class="field"><label class="lbl" for="colsel">Collection</label><div class="sel-wrap">${badge(cur || 'Folder', 'lead')}<select id="colsel" class="raised" data-a="setcol">${names.map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>${ic('down', 'tail')}</div></div>
     <div class="field tags"><span class="lbl" id="tg">Tags</span><div class="chips" role="list" aria-labelledby="tg">${tags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}${aiTags.map(t => `<span class="chip ai" role="listitem" title="Added by Gemini">${ic('spark', 'spark')}${esc(t)}<button data-a="tagdel" data-k="ai" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}
       ${S.addTag ? `<form data-form="tag"><input class="tagin well" name="t" aria-label="New tag" maxlength="20" autocomplete="off"></form>` : `<button class="chip add raised" data-a="addtag" aria-label="Add tag">${ic('plus')}</button>`}</div></div>
     <dl class="meta"><div><dt>Saved</dt><dd>${fmt(b.dateAdded)}</dd></div><div><dt>Last accessed</dt><dd>${fmt(m.lastAccessed)}</dd></div><div><dt>URL</dt><dd title="${esc(b.url)}">${esc(b.url)}</dd></div></dl>`}
@@ -223,39 +233,36 @@ const settings = () => {
   const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0;
   const tagPct = tagRunning() && job.total ? Math.round(((job.done || 0) + (job.failed || 0)) / job.total * 100) : (n ? Math.round(tagged / n * 100) : 0);
   const tagNote = tagRunning() ? `Tagging ${num(job.done || 0)} of ${num(job.total || 0)}. You can close this popup.` : job.error ? `Last run: ${job.error}` : tagged ? 'Tags and summaries are used by every search mode.' : 'Not tagged yet. Takes about a minute per 60 bookmarks.';
-  const note = { ready: 'Meaning index is complete.', indexing: 'Indexing… keep this open.', partial: `Meaning index ${num(S.embedded)} of ${num(n)} (${pct}%).`, error: 'The last indexing run failed.' }[st];
+  const note = { ready: 'Meaning index is complete.', indexing: 'Indexing… keep this open.', partial: `Meaning index ${num(S.embedded)} of ${num(n)}`, error: 'The last indexing run failed.' }[st];
+  const bar = (label, v) => `<div class="barrow"><div class="bar" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${v}"><i style="width:${v}%"></i></div><span>${v}%</span></div>`;
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
-  <section class="status well" aria-label="Index status">
-    <div class="line"><b>${num(n)}<small>${n === 1 ? 'bookmark' : 'bookmarks'}</small></b><button class="raised sm" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button></div>
-    ${local ? '' : `<div class="bar" role="progressbar" aria-label="Meaning index" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>`}
-    <p class="note ${st === 'error' ? 'err' : ''}">${local ? 'Keyword search only. No meaning index needed.' : note}</p>
+  <section class="sgroup"><h3>Index status</h3>
+    <div class="status"><div class="st-top"><div><b>${num(n)} <small>${n === 1 ? 'bookmark' : 'bookmarks'}</small></b><p class="note ${st === 'error' ? 'err' : ''}">${local ? 'Keyword search only. No meaning index needed.' : note}</p></div><img class="spot" src="assets/img/status.webp" alt=""></div>
+      ${local ? '' : bar('Meaning index', pct)}
+      <div class="st-act"><button class="raised sm" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button></div></div>
   </section>
   <section class="sgroup"><h3>AI tags</h3>
-    <div class="status well" aria-label="AI tagging">
-      <div class="line"><b>${num(S.tag?.tagged || 0)}<small>of ${num(n)} tagged</small></b><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${tagRunning() ? 'Tagging…' : (S.tag?.tagged ? 'Tag new' : 'Tag with Gemini')}</button></div>
-      <div class="bar" role="progressbar" aria-label="Tagging progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${tagPct}"><i style="width:${tagPct}%"></i></div>
-      <p class="note ${S.tag?.job?.error && !tagRunning() ? 'err' : ''}">${esc(tagNote)}</p>
-    </div>
+    <div class="status"><div class="st-top"><div><b>${num(tagged)} <small>of ${num(n)} tagged</small></b><p class="note ${job.error && !tagRunning() ? 'err' : ''}">${esc(tagNote)}</p></div><img class="spot" src="assets/img/tagging.webp" alt=""></div>
+      ${bar('Tagging progress', tagPct)}
+      <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Tagging…' : (tagged ? 'Tag new' : 'Tag with Gemini')}</button></div></div>
     <div class="srow"><span>Auto-tag new bookmarks<small>Tags new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-tag new bookmarks')}</div>
     <p class="note2">Gemini reads each site to write tags and a one-line summary. Titles and links are sent to Google.</p>
   </section>
   <section class="sgroup"><h3>Search</h3>
     <div class="srow"><span>Search engine<small>How your queries are matched</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="srow"><span>Auto index new bookmarks<small>Index new saves as they happen</small></span>${sw('autoindex', S.settings.autoEmbedNew !== false, 'Auto index new bookmarks')}</div>
-    <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="raised sm">Save</button></div></form>
+    <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div></form>
   </section>
   <section class="sgroup"><h3>Appearance</h3>
-    <div class="srow"><span>Theme<small>Dark, light or follow the system</small></span><div class="seg well" role="group" aria-label="Theme">${[['dark', 'Dark'], ['light', 'Light'], ['system', 'System']].map(([v, l]) => `<button data-a="theme" data-k="${v}" aria-pressed="${S.theme === v}">${l}</button>`).join('')}</div></div>
     <div class="srow"><span>Show favicons<small>Site icons next to each bookmark</small></span>${sw('favicons', !S.noFav, 'Show favicons')}</div>
-    <div class="srow"><span>Reduce effects<small>Turns off grain, depth and glow</small></span>${sw('flat', S.flat, 'Reduce effects')}</div>
   </section>
   <section class="sgroup"><h3>Data &amp; privacy</h3>
-    <button class="srow" data-a="export"><span>Export bookmarks<small>Save a JSON copy with tags and notes</small></span>${ic('upload')}</button>
-    <button class="srow" data-a="import"><span>Import bookmarks<small>Opens Chrome’s bookmark manager</small></span>${ic('download')}</button>
-    ${S.confirmClear ? `<div class="confirm raised" role="alertdialog" aria-label="Confirm clear data"><span>Clear the index, tags, summaries and custom collections? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>`
-      : `<button class="srow danger" data-a="clearask"><span>Clear all data<small>Everything stays on this device until you do</small></span>${ic('trash')}</button>`}
+    <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
+    ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all data</button>`}</div>
+    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear the index, tags, summaries and custom collections? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
+    <p class="note2">Everything stays on this device. Import opens Chrome’s bookmark manager.</p>
   </section>
-  <p class="about">AI Bookmarks v${esc(ver)}</p>
+  <p class="about">v${esc(ver)} · AI Bookmarks</p>
   </div></div></main>`;
 };
 
@@ -264,10 +271,9 @@ const app = $('#app');
 
 function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
-  app.classList.toggle('flat', S.flat);
   app.dataset.screen = S.screen;
   const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['details', 'settings'].includes(S.screen) ? '' : statusFooter();
-  app.innerHTML = header() + SCREENS[S.screen]() + foot;
+  app.innerHTML = header() + artBand() + SCREENS[S.screen]() + foot;
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   const inp = $('input[name=q]', app);
   if (inp && (hadSearch || focusSearch)) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -338,7 +344,6 @@ app.addEventListener('click', async e => {
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'autotag': await saveSettings({ autoTagNew: S.settings.autoTagNew === false }); return render();
-    case 'theme': S.theme = k; try { localStorage.setItem('theme', k); } catch { /* storage unavailable */ } applyTheme(); return render();
     case 'newc': S.adding = !S.adding; render(); return $('[name=n]', app)?.focus();
     case 'rebuild': return rebuild();
     case 'retry': S.loading = true; S.error = null; render(); await refresh(); return;
@@ -349,7 +354,6 @@ app.addEventListener('click', async e => {
     case 'clearyes': { await api({ type: 'CLEAR_DATA' }); S.confirmClear = false; META = {}; say('Local data cleared'); await refresh(); return; }
     case 'autoindex': await saveSettings({ autoEmbedNew: S.settings.autoEmbedNew === false }); return render();
     case 'favicons': S.noFav = !S.noFav; try { localStorage.setItem('nofav', S.noFav ? '1' : ''); } catch { /* storage unavailable */ } return render();
-    case 'flat': S.flat = !S.flat; try { localStorage.setItem('flat', S.flat ? '1' : ''); } catch { /* storage unavailable */ } return render();
   }
 });
 app.addEventListener('change', async e => {
@@ -397,7 +401,7 @@ app.addEventListener('keydown', e => {
 (async () => {
   const live = $('#live');
   say = m => { live.textContent = ''; setTimeout(() => live.textContent = m, 30); };
-  try { S.flat = !!localStorage.getItem('flat'); S.noFav = !!localStorage.getItem('nofav'); } catch { /* storage unavailable */ }
+  try { S.noFav = !!localStorage.getItem('nofav'); } catch { /* storage unavailable */ }
   if (!IN_EXT) api = (await import('./dev-fixtures.js')).devApi;
   render();
   await Promise.all([load(), loadStatus()]);

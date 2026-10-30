@@ -90,6 +90,7 @@ function pollTags() {
   S.tagTimer = setInterval(async () => {
     const tg = await api({ type: 'GET_TAG_STATUS' });
     if (tg.success) S.tag = tg;
+    const mm = await api({ type: 'GET_META' }); if (mm.success) META = mm.meta || META;   // so the filing bar fills as bookmarks are tagged
     if (!tagRunning()) { clearInterval(S.tagTimer); await load(); await loadStatus(); say('Organising finished'); }
     render();
   }, 2000);
@@ -269,6 +270,7 @@ const details = () => {
 };
 
 const sw = (a, on, label) => `<button class="sw" role="switch" aria-checked="${on}" aria-label="${label}" data-a="${a}"><i></i></button>`;
+const WORDS = ['Tagging', 'Indexing', 'Reading', 'Categorising', 'Pondering', 'Cross-referencing', 'Noodling', 'Filing', 'Getting smarter'];
 const settings = () => {
   const ver = IN_EXT ? chrome.runtime.getManifest().version : '1.0.0', n = BOOKMARKS.length, st = idxState();
   const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0, running = tagRunning(), local = S.engine === 'local';
@@ -280,7 +282,7 @@ const settings = () => {
   const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
   const statusText = !S.hasKey ? 'Make search smarter'
     : running && !job.total ? 'Looking for new bookmarks…'
-    : running ? (fresh ? `Tagging ${num(job.total)} new ${job.total === 1 ? 'bookmark' : 'bookmarks'}… ${num(job.done || 0)} of ${num(job.total)}` : `Tagging… ${num(job.done || 0)} of ${num(job.total)}`)
+    : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}… ${num(job.done || 0)} of ${num(job.total)}`
     : job.error ? 'Stopped before finishing'
     : caughtUp ? 'Nothing new to tag'
     : all ? 'All caught up'
@@ -296,7 +298,7 @@ const settings = () => {
   const pctOf = v => n ? (v / n * 100).toFixed(2) : 0;
   const segs = [...top.map(([c, v], i) => ({ c, v, bg: PAL[i] })), ...(rest ? [{ c: 'Others', v: rest, bg: 'var(--accent-tint)' }] : [])];
   const bar = `<div class="fbar" role="img" aria-label="${esc(statusText)}">${segs.map(s => `<i style="width:${pctOf(s.v)}%;background:${s.bg}" title="${esc(s.c)} ${s.v}"></i>`).join('')}${n - filed > 0 ? `<i class="hatch" style="width:${pctOf(n - filed)}%"></i>` : ''}</div>`;
-  const legend = n - filed > 0 ? `${num(filed)} of ${num(n)} tagged` : '';
+  const legend = !running && n - filed > 0 ? `${num(filed)} of ${num(n)} tagged` : '';
   const keys = segs.map(s => `<span><b style="background:${s.bg}"></b>${esc(s.c)} ${num(s.v)}</span>`).join('');
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';

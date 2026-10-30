@@ -240,7 +240,7 @@ const resultsScreen = () => {
   const sorts = [['relevance', 'Relevance'], ['recent', 'Recently saved'], ['accessed', 'Recently accessed'], ['title', 'Title']].filter(o => S.q || o[0] !== 'relevance');
   return `<main>${searchBox()}
     <div class="sec"><span class="count">${S.loading ? 'Searching your bookmarks…' : label}</span>${S.loading ? '' : `<label class="sort"><span class="sv" aria-hidden="true">${(sorts.find(o => o[0] === S.sort) || sorts[0])[1]}</span>${ic('down')}<select data-a="sort" aria-label="Sort by">${sorts.map(o => `<option value="${o[0]}" ${S.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></label>`}</div>
-    <div class="scroll">${body}${artBand()}</div></main>`;
+    <div class="scroll">${body}${S.loading ? '' : artBand()}</div></main>`;
 };
 
 let CUSTOM = [];

@@ -292,7 +292,7 @@ const settings = () => {
     : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
   const cnt = !all && (running || tagged) ? `${num(tagged)} of ${num(n)}${running ? '' : ' tagged'}` : '';
-  const cells = 10, filled = n ? Math.floor(tagged / n * cells) : 0;   // ten boxes, each a tenth of your bookmarks
+  const cells = 20, filled = n ? Math.floor(tagged / n * cells) : 0;   // twenty boxes, each a twentieth of your bookmarks
   const mosaic = `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd"' : ''}></i>`).join('')}</div>`;
   const bar = `${mosaic}<div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;

@@ -353,3 +353,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .skb.pill:nth-child(2){width:64px}.skb.pill:nth-child(3){width:44px}
 @keyframes skim{from{background-position:120% 0}to{background-position:-100% 0}}
 @media (prefers-reduced-motion:reduce){.skb{animation:none}}
+.mosaic{grid-template-columns:repeat(20,minmax(0,1fr));gap:3px}.mosaic i{border-radius:3px}@keyframes mpulse{50%{transform:scale(1.15)}}

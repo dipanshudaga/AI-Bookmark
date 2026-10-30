@@ -279,3 +279,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .checks i{flex:none;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line-2);display:grid;place-items:center;font-style:normal;font-size:10px;line-height:1;color:#fff}
 .checks li.ok i{background:var(--accent);border-color:var(--accent)}
 .checks li.ok{color:var(--ink)}
+.keymask{font-family:var(--font-mono);letter-spacing:.04em}.keyact{flex:none;display:flex;gap:var(--sp-2);flex-direction:row!important}.keyline .raised.sm{height:var(--ctl)}

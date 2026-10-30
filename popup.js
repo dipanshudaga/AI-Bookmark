@@ -83,7 +83,7 @@ async function loadStatus() {
   if (tg.success) S.tag = tg;
   if (st.success) S.embedded = st.embedded;
   if (se.success) { S.settings = se.settings || {}; S.engine = S.settings.searchEngine || 'auto'; }
-  S.hasKey = !!(k.success && k.apiKey);
+  S.hasKey = !!(k.success && k.apiKey); S.keyTail = S.hasKey ? k.apiKey.slice(-4) : '';
 }
 const tagRunning = () => !!(S.tag?.job?.running && Date.now() - (S.tag.job.updatedAt || 0) < 120000);
 function pollTags() {
@@ -294,7 +294,9 @@ const settings = () => {
     <div class="srow"><span>Get new bookmarks ready<small>Index, tag and sort new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
   </section>
   <section class="sgroup"><h3>Gemini</h3>
-    <form class="srow col" data-form="key"><span>API key<small>${esc(S.keyNote || (S.hasKey ? 'Connected. Saved on this device.' : 'Not connected yet.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>
+${S.hasKey && !S.keyEdit
+      ? `<div class="srow"><span>API key<small class="keymask">••••••••••••${esc(S.keyTail)}</small></span><span class="keyact"><button class="raised sm" data-a="keychange">Change</button><button class="raised sm danger" data-a="keyremove">Remove</button></span></div>`
+      : `<form class="srow col" data-form="key"><span>API key<small>${esc(S.keyNote || (S.hasKey ? 'Paste a new key to replace the saved one.' : 'Not connected yet.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste your Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button>${S.hasKey ? '<button type="button" class="raised sm" data-a="keycancel">Cancel</button>' : ''}</div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>`}
   </section>
   <section class="sgroup"><h3>Your data</h3>
     <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
@@ -386,6 +388,9 @@ app.addEventListener('click', async e => {
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
     case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
+    case 'keychange': S.keyEdit = true; S.keyNote = ''; return render();
+    case 'keycancel': S.keyEdit = false; return render();
+    case 'keyremove': await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyEdit = false; S.keyNote = 'Key removed.'; say('Key removed'); return render();
     case 'obskip': try { localStorage.setItem('ob_skip', '1'); } catch { /* storage unavailable */ } return render();
     case 'keyopen': S.keyOpen = !S.keyOpen; S.keyNote = ''; return render();
     case 'moreopen': S.moreOpen = !S.moreOpen; S.confirmClear = false; return render();
@@ -425,7 +430,7 @@ app.addEventListener('submit', async e => {
   }
   if (f === 'key') {
     const k = String(d.get('k')).trim(); if (!k) return;
-    const r = await api({ type: 'SAVE_API_KEY', apiKey: k }); S.hasKey = r.success; S.keyNote = r.success ? 'Key saved.' : 'Could not save the key.'; render();
+    const r = await api({ type: 'SAVE_API_KEY', apiKey: k }); S.hasKey = r.success; S.keyTail = r.success ? k.slice(-4) : ''; S.keyEdit = !r.success; S.keyNote = r.success ? '' : 'Could not save the key.'; render();
   }
 });
 app.addEventListener('keydown', e => {

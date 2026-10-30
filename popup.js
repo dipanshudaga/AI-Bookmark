@@ -73,7 +73,7 @@ async function load() {
   if (meta.success) META = meta.meta || {};
   if (!res.success) { S.error = res.error || 'Could not read your bookmarks.'; return; }
   S.error = null;
-  CATS = res.categories || {};
+  CATS = res.categories || {}; CUSTOM = res.custom || [];
   const seen = new Map();
   Object.values(CATS).forEach(list => list.forEach(b => seen.set(b.id, b)));
   BOOKMARKS = [...seen.values()];
@@ -238,11 +238,12 @@ const resultsScreen = () => {
     <div class="scroll">${body}${artBand()}</div></main>`;
 };
 
+let CUSTOM = [];
 const collections = () => {
   const rows = [{ name: 'All Bookmarks', n: BOOKMARKS.length, key: null },
     ...Object.entries(CATS).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name, l]) => ({ name, n: l.length, key: name }))];
   return `<main><div class="ttl"><h2>Collections</h2></div>
-        <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button></li>`).join('')}</ul>${artBand()}</div></main>`;
+        <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button>${r.key && CUSTOM.includes(r.key) ? `<button class="rmcol" data-a="rmcol" data-k="${esc(r.key)}" aria-label="Delete collection ${esc(r.key)}">${ic('trash')}</button>` : ''}</li>`).join('')}</ul>${artBand()}</div></main>`;
 };
 
 const details = () => {
@@ -375,6 +376,7 @@ app.addEventListener('click', async e => {
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
+    case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
     case 'obskip': try { localStorage.setItem('ob_skip', '1'); } catch { /* storage unavailable */ } return render();
     case 'keyopen': S.keyOpen = !S.keyOpen; S.keyNote = ''; return render();
     case 'moreopen': S.moreOpen = !S.moreOpen; S.confirmClear = false; return render();

@@ -273,3 +273,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .ob small{font-size:var(--fs-xs);color:var(--ink-3)}
 .ob .primary{width:100%}
 .obx{position:absolute;top:8px;right:8px;width:28px;height:28px;background:none;border:0;font-size:20px;color:var(--ink-3);cursor:pointer}
+.rmcol{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer}.rmcol:hover{color:var(--danger)}.rmcol svg{width:16px;height:16px}

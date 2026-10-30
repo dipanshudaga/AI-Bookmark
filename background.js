@@ -536,7 +536,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const custom = (await chrome.storage.local.get(CUSTOM_CATS_KEY))[CUSTOM_CATS_KEY] || [];
         for (const name of custom) if (!categoryMap[name]) categoryMap[name] = [];
 
-        sendResponse({ success: true, categories: categoryMap, count: bookmarks.length });
+        sendResponse({ success: true, categories: categoryMap, custom, count: bookmarks.length });
+      }
+
+      else if (msg.type === 'REMOVE_CATEGORY') {
+        const st = await chrome.storage.local.get([CUSTOM_CATS_KEY, OVERRIDES_KEY]);
+        const overrides = st[OVERRIDES_KEY] || {};
+        for (const id of Object.keys(overrides)) if (overrides[id] === msg.category) delete overrides[id];
+        await chrome.storage.local.set({ [CUSTOM_CATS_KEY]: (st[CUSTOM_CATS_KEY] || []).filter(c => c !== msg.category), [OVERRIDES_KEY]: overrides });
+        await indexBookmarks();
+        sendResponse({ success: true });
       }
 
       else if (msg.type === 'SET_CATEGORY') {

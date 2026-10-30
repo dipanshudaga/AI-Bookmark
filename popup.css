@@ -339,3 +339,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .drow:hover{background:var(--sel);color:var(--ink)}
 .drow.bad:hover{background:var(--danger-tint);color:var(--danger);border-color:var(--line)}
 .mosaic{grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}.mosaic i{aspect-ratio:auto;height:28px;border-radius:6px}
+.mosaic i{height:auto;aspect-ratio:1;border-radius:6px}
+@keyframes mpulse{50%{transform:scale(1.08)}}

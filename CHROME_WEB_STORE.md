@@ -73,7 +73,7 @@ PRIVATE BY DESIGN
 • No server of our own. No analytics. No advertising.
 • Your index and your key stay in your browser.
 • Without a key, nothing leaves your device.
-• With a key, the extension sends your bookmark titles, addresses, folder names and search text to Google.
+• With a key, the extension sends your bookmark titles, addresses, folder names, tags, summaries and search text to Google. Search text goes as you type.
 
 SHORTCUT
 Press Ctrl+Shift+K (Cmd+Shift+K on Mac) to open the panel.
@@ -168,7 +168,7 @@ Tick the data types the extension handles. The form lists them in groups.
 | Group | Tick it? | Why |
 | --- | --- | --- |
 | Website content | Yes | Bookmark titles and addresses go to Google when the user adds a key. |
-| User activity | Yes | The search text goes to Google when the user searches. |
+| User activity | Yes | The search text goes to Google as the user types and searches. |
 | Authentication information | Yes | The user's own API key is stored on the device and sent to Google. |
 | Personally identifiable information | No | The extension does not collect it. |
 | Health information | No | |

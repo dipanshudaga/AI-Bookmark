@@ -30,8 +30,8 @@ You can use the extension with no key. In this mode, the extension sends nothing
 
 After you add a Gemini API key, the extension sends data to the Gemini API at `generativelanguage.googleapis.com`:
 
-- **When it indexes bookmarks:** the title, address and folder name of each bookmark. Gemini can also fetch and read the page at each address. This is how it writes the tags and the summary.
-- **When you search:** your search text.
+- **When it indexes bookmarks:** the title, address and folder name of each bookmark. Gemini can also fetch and read the page at each address. This is how it writes the tags and the summary. The extension then sends each bookmark's title, tags and summary to build the search index.
+- **When you search:** your search text. The extension also sends what you type, after a short pause, so the result is ready sooner. This includes text you type and then delete.
 - **With every request:** your API key. This identifies your account to Google.
 
 Google handles this data under its own terms. Read the [Gemini API terms](https://ai.google.dev/gemini-api/terms) for how Google uses it. The terms for free keys and for paid keys can be different.

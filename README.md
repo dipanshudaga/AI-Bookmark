@@ -55,7 +55,7 @@ The extension has no server of its own. It has no analytics.
 When you use Gemini, the extension sends this data to Google:
 
 - the title, address and folder name of each bookmark
-- your search text
+- your search text, including what you type before you press Enter
 
 Gemini can also read the pages at your bookmark addresses.
 

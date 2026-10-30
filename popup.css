@@ -215,8 +215,8 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .keyline input{flex:1;min-width:0;height:var(--ctl);padding:0 var(--sp-3);font-size:var(--fs-sm)}
 .keyline .sm{height:var(--ctl)}
 .note2{font-size:var(--fs-sm);color:var(--ink-3);padding-top:var(--sp-2);line-height:var(--lh)}
-.dbtns{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-1)}
-.dbtns .raised{height:var(--ctl-sm);padding:0 var(--sp-3);font-size:var(--fs-sm)}
+.dbtns{display:flex;gap:var(--sp-2)}
+.dbtns .raised{flex:1;min-width:0;height:var(--ctl-sm);padding:0 var(--sp-2);font-size:var(--fs-sm);white-space:nowrap}
 .dbtns .raised svg{width:14px;height:14px}
 .sw{flex:none;width:44px;height:24px;border-radius:12px;position:relative;background:var(--line-2);padding:0;transition:background .12s}
 .sw i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .12s}

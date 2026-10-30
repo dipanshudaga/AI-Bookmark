@@ -265,7 +265,6 @@ const settings = () => {
     <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
     ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all data</button>`}</div>
     ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear the index, tags, summaries and custom collections? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
-    <p class="note2">Everything stays on this device. Import opens Chrome’s bookmark manager.</p>
   </section>
   <p class="about">v${esc(ver)} · AI Bookmarks</p>
   </div></div></main>`;

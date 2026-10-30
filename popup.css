@@ -271,7 +271,7 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .ob h3{font-family:var(--font-display);font-size:var(--fs-md);font-weight:var(--fw-bold);margin:0;padding-right:28px}
 .ob p{margin:0;font-size:var(--fs-sm);color:var(--ink-2)}
 .ob small{font-size:var(--fs-xs);color:var(--ink-3)}
-.ob .primary{width:100%}
+.ob>.primary{width:100%}
 .obx{position:absolute;top:8px;right:8px;width:28px;height:28px;background:none;border:0;font-size:20px;color:var(--ink-3);cursor:pointer}
 .rmcol{flex:none;width:44px;display:grid;place-items:center;background:none;border:0;color:var(--ink-3);cursor:pointer}.rmcol:hover{color:var(--danger)}.rmcol svg{width:16px;height:16px}
 .checks{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:var(--fs-sm);color:var(--ink-2)}

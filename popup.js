@@ -284,10 +284,10 @@ const settings = () => {
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
     <div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
-    <ul class="checks">${line(st === 'ready' && !local, idxText)}${S.hasKey ? line(tagged >= n && n && !running, tagText) : ''}</ul>
-    <div class="barrow"><div class="bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
-    <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>
-    <p class="hint">${S.hasKey ? 'One tap tags, sorts and indexes everything. You can close this panel while it works.' : 'Add a Gemini key below to also tag and sort your bookmarks.'}</p>
+    <ul class="checks">${S.hasKey ? line(st === 'ready' && !local, idxText) : line(true, 'Keyword search is ready')}${S.hasKey ? line(tagged >= n && n && !running, tagText) : ''}</ul>
+    ${S.hasKey ? `<div class="barrow"><div class="bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
+    <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>` : ''}
+    <p class="hint">${S.hasKey ? 'One tap tags, sorts and indexes everything. You can close this panel while it works.' : 'Add a free Gemini key below to search by meaning and to tag and sort your bookmarks.'}</p>
   </section>
   <section class="sgroup"><h3>Search</h3>
     <div class="srow"><span>How to search<small>Auto picks the fastest way for each search</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>

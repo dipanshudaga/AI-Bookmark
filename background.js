@@ -232,27 +232,18 @@ async function searchWithEmbeddings(query, bookmarks, apiKey) {
   const stored = await chrome.storage.local.get(EMBEDDINGS_KEY);
   const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
 
-  const scored = [];
+  const terms = String(query).toLowerCase().match(/[\p{L}\p{N}]+/gu)?.filter(t => t.length > 1 && !STOPWORDS.has(t)) || [];
+  const all = [];
   for (const bm of bookmarks) {
-    const bmVector = embeddingsMap[bm.id];
-    let sim = 0;
-    if (bmVector) {
-      sim = cosineSimilarity(queryVector, bmVector);
-    } else {
-      // Local keyword hybrid boost if embedding missing
-      const match = bm.searchText.includes(query.toLowerCase()) ? 0.35 : 0;
-      sim = match;
-    }
-
-    if (sim > 0.38) {
-      scored.push({
-        ...bm,
-        matchScore: Math.round(sim * 100),
-        engineUsed: 'Google Embeddings'
-      });
-    }
+    const v = embeddingsMap[bm.id];
+    let sim = v ? cosineSimilarity(queryVector, v) : 0;
+    const hits = terms.filter(t => bm.searchText.includes(t)).length;
+    sim += terms.length ? 0.08 * hits / terms.length : 0;   // words found in the title, tags or summary lift a result
+    all.push({ bm, sim });
   }
-
+  all.sort((a, b) => b.sim - a.sim);
+  const top = all[0]?.sim || 0, floor = Math.max(0.5, top - 0.08);   // keep only results close to the best one
+  const scored = all.filter(x => x.sim >= floor).map(({ bm, sim }) => ({ ...bm, matchScore: Math.min(99, Math.round(sim * 100)), engineUsed: 'Meaning' }));
   scored.sort((a, b) => b.matchScore - a.matchScore);
   return scored.slice(0, 20);
 }
@@ -465,17 +456,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
         let results = [], engineUsed = 'Local';
 
-        // AI search: the meaning index picks a shortlist, Gemini reads the tags and summaries and keeps only what truly answers the question.
+        // AI search. With the meaning index built this is instant: one query embedding, a local comparison, no second model call.
         if (apiKey) {
           try {
-            let pool = bookmarks;
-            if (Object.keys(embeddingsMap).length > 5) {
-              const qv = await embedText(msg.query, apiKey);
-              if (qv) pool = bookmarks.map(bm => ({ bm, s: embeddingsMap[bm.id] ? cosineSimilarity(qv, embeddingsMap[bm.id]) : 0 }))
-                .sort((a, b) => b.s - a.s).slice(0, 60).map(x => x.bm);
+            const ready = Object.keys(embeddingsMap).length >= bookmarks.length * 0.95;
+            if (ready) {
+              results = await searchWithEmbeddings(msg.query, bookmarks, apiKey);
+              engineUsed = 'Meaning';
+            } else {   // index still building: let Gemini read the tags instead
+              results = await searchWithAI(msg.query, bookmarks, apiKey);
+              engineUsed = 'Gemini';
             }
-            results = await searchWithAI(msg.query, pool, apiKey);
-            engineUsed = 'Gemini';
           } catch (e) {
             console.warn('AI search failed, using keyword match:', e);
             results = searchLocal(msg.query, bookmarks);
@@ -483,6 +474,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         } else {
           results = searchLocal(msg.query, bookmarks);
         }
+        if (!results.length) results = searchLocal(msg.query, bookmarks).filter(r => r.score >= LOCAL_CONFIDENT);
 
         sendResponse({ success: true, results, engineUsed });
       }

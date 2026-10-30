@@ -59,7 +59,7 @@ const store = {
 
 let BOOKMARKS = [], CATS = {}, META = {};
 const S = {
-  screen: 'home', from: 'home', q: '', draft: '', filter: 'All', colOnly: null, lastCol: null, sort: 'relevance', sel: 0, results: [],
+  screen: 'home', from: 'home', q: '', draft: '', filter: 'All', colOnly: null, lastCol: null, sort: 'relevance', sel: -1, results: [],
   bm: null, loading: true, error: null, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false, copied: null,
   engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '',
   tag: null, tagTimer: null
@@ -185,7 +185,7 @@ const rowTags = b => {
 const row = (b, o = {}) => {
   const name = b.title || host(b.url), tags = rowTags(b);
   return `<li class="row ${o.sel ? 'sel' : ''}">
-  <button class="main" data-a="open" data-id="${esc(b.id)}" title="${esc(name + ' — ' + b.url)}">${fav(b)}<span class="txt"><span class="t">${o.q ? hl(name, o.q) : esc(name)}</span><span class="d">${esc(host(b.url))}</span>${tags.length ? `<span class="rt">${tags.map(([t, m]) => `<i${m ? ' class="m"' : ''}>${o.q ? hl(t, o.q) : esc(t)}</i>`).join('')}</span>` : ''}</span></button>
+  <button class="main" data-a="open" data-id="${esc(b.id)}" title="${esc(name + ' — ' + b.url)}">${fav(b)}<span class="txt"><span class="t">${esc(name)}</span><span class="d">${esc(host(b.url))}</span>${tags.length ? `<span class="rt">${tags.map(([t]) => `<i>${esc(t)}</i>`).join('')}</span>` : ''}</span></button>
   <button class="more-btn" data-a="detail" data-id="${esc(b.id)}" aria-label="Details for ${esc(name)}" title="Details">${ic('chev', 'arrow')}</button></li>`;
 };
 const message = (title, text, btn, art = false) => `<div class="empty">${art ? '<img class="spot" src="assets/img/empty-search.webp" alt="">' : ''}<b>${esc(title)}</b>${esc(text)}${btn ? `<button class="raised" data-a="${btn[0]}">${btn[1]}</button>` : ''}</div>`;
@@ -335,7 +335,7 @@ const go = (screen, patch = {}) => { Object.assign(S, { screen, confirm: false, 
 const find = id => BOOKMARKS.find(b => b.id === id);
 async function runSearch(q) {
   const my = ++seq;
-  go('results', { q, draft: q, filter: 'All', sort: 'relevance', sel: 0, colOnly: null, loading: true, error: null });
+  go('results', { q, draft: q, filter: 'All', sort: 'relevance', sel: -1, colOnly: null, loading: true, error: null });
   const res = await api({ type: 'SEARCH', query: q, engine: S.engine });
   if (my !== seq) return;
   S.loading = false;
@@ -372,13 +372,13 @@ function exportJson() {
 app.addEventListener('click', async e => {
   const el = e.target.closest('[data-a]'); if (!el || el.tagName === 'SELECT') return;
   const a = el.dataset.a, k = el.dataset.k;
-  const resultsPatch = (p) => go('results', { q: '', draft: '', filter: 'All', sort: 'recent', sel: 0, loading: false, error: null, ...p });
+  const resultsPatch = (p) => go('results', { q: '', draft: '', filter: 'All', sort: 'recent', sel: -1, loading: false, error: null, ...p });
   switch (a) {
     case 'home': return go('home', { q: '', draft: '', filter: 'All', colOnly: null });
     case 'cols': return go('collections');
     case 'settings': return go(S.screen === 'settings' ? 'home' : 'settings');
     case 'clear': S.q = ''; S.draft = ''; focusSearch = true; return S.colOnly ? render() : go('home', { filter: 'All' });
-    case 'filter': return S.screen === 'home' ? (S.lastCol = k === 'All' ? null : k, resultsPatch({ colOnly: k === 'All' ? null : k })) : (S.filter = k, S.sel = 0, render());
+    case 'filter': return S.screen === 'home' ? (S.lastCol = k === 'All' ? null : k, resultsPatch({ colOnly: k === 'All' ? null : k })) : (S.filter = k, S.sel = -1, render());
     case 'all': return resultsPatch({ colOnly: null, browseBack: 'home' });
     case 'opencol': S.lastCol = k || null; return resultsPatch({ colOnly: k || null, browseBack: 'collections' });
     case 'browseback': return go(S.browseBack || 'home', { colOnly: null });
@@ -411,7 +411,7 @@ app.addEventListener('click', async e => {
 });
 app.addEventListener('change', async e => {
   const a = e.target.dataset.a;
-  if (a === 'sort') { S.sort = e.target.value; S.sel = 0; render(); }
+  if (a === 'sort') { S.sort = e.target.value; S.sel = -1; render(); }
   if (a === 'setcol') { const r = await api({ type: 'SET_CATEGORY', id: S.bm, category: e.target.value }); say(r.success ? 'Moved to ' + e.target.value : 'Could not move bookmark'); await load(); render(); }
   if (a === 'engine') { S.engine = e.target.value; await saveSettings({ searchEngine: S.engine }); say('Search engine saved'); render(); }
 });

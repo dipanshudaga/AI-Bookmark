@@ -229,7 +229,7 @@ const browse = () => {
 const resultsScreen = () => {
   if (!S.q) return browse();
   const r = shown(), vis = r.slice(0, LIST_CAP);
-  const label = S.q ? plural(r.length, 'result') : `${plural(r.length, 'bookmark')}${S.colOnly ? ' in ' + esc(S.colOnly) : ''}`;
+  const label = S.q ? plural(r.length, 'result') + (S.refining ? ' · refining…' : '') : `${plural(r.length, 'bookmark')}${S.colOnly ? ' in ' + esc(S.colOnly) : ''}`;
   let body;
   if (S.loading) body = skeleton();
   else if (S.error) body = message('Search failed', S.error, ['retry-search', 'Try again']);
@@ -297,7 +297,7 @@ const settings = () => {
   const bar = `${mosaic}<div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = S.hasKey && (running || S.rebuilding) || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
-  return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
+  return `<main><div class="ttl"><h2>Settings</h2></div><div class="scroll"><div class="sets">
   <section class="hero">
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
       <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
@@ -349,19 +349,29 @@ const keyDialog = () => `<div class="scrim" data-a="keycancel"><div class="dlg" 
   <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>
   <div class="dact"><button type="button" class="raised" data-a="keycancel">Cancel</button><button class="primary">Save</button></div></form>
   ${S.hasKey ? '<button class="clearlink" data-a="keyremove">Remove key</button>' : ''}</div></div>`;
-let toastTimer;
+let toastTimer, prefetchTimer;
 const toast = (msg, undo) => { clearTimeout(toastTimer); S.toast = { msg, undo }; render(); toastTimer = setTimeout(() => { S.toast = null; render(); }, 7000); };
 const go = (screen, patch = {}) => { Object.assign(S, { screen, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false }, patch); render(); };
 
 // ── actions ────────────────────────────────────────────────────────────────
 const find = id => BOOKMARKS.find(b => b.id === id);
+// instant first pass from what the panel already holds, so something useful is on screen before the meaning search returns
+function quickMatch(q) {
+  const terms = q.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !STOP.has(t));
+  if (!terms.length) return [];
+  return BOOKMARKS.map(b => {
+    const title = (b.title || '').toLowerCase(), all = b.searchText || title;
+    const s = terms.reduce((n, t) => n + (title.includes(t) ? 5 : 0) + (all.includes(t) ? 2 : 0), 0) + (title.includes(q.toLowerCase()) ? 10 : 0);
+    return { ...b, score: s };
+  }).filter(b => b.score >= 4).sort((a, b) => b.score - a.score).slice(0, 20);
+}
 async function runSearch(q) {
-  const my = ++seq;
-  go('results', { q, draft: q, filter: 'All', sort: 'relevance', sel: -1, colOnly: null, loading: true, error: null });
+  const my = ++seq, quick = quickMatch(q);
+  go('results', { q, draft: q, filter: 'All', sort: 'relevance', sel: -1, colOnly: null, loading: !quick.length, refining: !!quick.length, results: quick, error: null });
   const res = await api({ type: 'SEARCH', query: q, engine: S.engine });
   if (my !== seq) return;
-  S.loading = false;
-  if (res.success) { S.results = res.results || []; say(plural(S.results.length, 'result')); } else { S.results = []; S.error = res.error || 'Search is unavailable.'; }
+  S.loading = false; S.refining = false;
+  if (res.success) { S.results = res.results?.length || !quick.length ? (res.results || []) : quick; say(plural(S.results.length, 'result')); } else if (!quick.length) { S.results = []; S.error = res.error || 'Search is unavailable.'; }
   render();
 }
 async function copy(b) {
@@ -459,6 +469,7 @@ app.addEventListener('change', async e => {
 app.addEventListener('input', e => {
   if (e.target.name !== 'q') return;
   S.draft = e.target.value; $('.clr', app).hidden = !S.draft;
+  clearTimeout(prefetchTimer); if (S.hasKey && S.draft.trim().length > 2) prefetchTimer = setTimeout(() => api({ type: 'PREFETCH', query: S.draft.trim() }), 300);   // warm the query vector while typing
 });
 app.addEventListener('submit', async e => {
   e.preventDefault();

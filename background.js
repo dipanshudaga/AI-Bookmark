@@ -133,6 +133,21 @@ function getBookmarkEmbeddingText(bm) {
 }
 
 // ─── Google Embeddings API (gemini-embedding-001) ───────────────────────────
+// Search speed: parsing ~10MB of vectors out of storage on every search cost ~90ms, so keep them in memory
+// (dropped whenever storage changes), and remember recent query vectors so a repeated or pre-typed query needs no network.
+let embCache = null;
+const getEmbeddings = async () => embCache ||= ((await chrome.storage.local.get(EMBEDDINGS_KEY))[EMBEDDINGS_KEY] || {});
+chrome.storage.onChanged.addListener(ch => { if (ch[EMBEDDINGS_KEY]) embCache = null; });
+const qCache = new Map();
+async function embedQuery(text, apiKey) {
+  const k = text.trim().toLowerCase();
+  if (qCache.has(k)) return qCache.get(k);
+  const p = embedText(text, apiKey).catch(e => { qCache.delete(k); throw e; });
+  qCache.set(k, p);
+  if (qCache.size > 40) qCache.delete(qCache.keys().next().value);
+  return p;
+}
+
 async function embedText(text, apiKey) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
   const response = await fetch(url, {
@@ -226,11 +241,8 @@ function cosineSimilarity(vecA, vecB) {
 
 // ─── Semantic Search via Google Embeddings ─────────────────────────────────
 async function searchWithEmbeddings(query, bookmarks, apiKey) {
-  const queryVector = await embedText(query, apiKey);
+  const [queryVector, embeddingsMap] = await Promise.all([embedQuery(query, apiKey), getEmbeddings()]);
   if (!queryVector) throw new Error('Could not compute query embedding');
-
-  const stored = await chrome.storage.local.get(EMBEDDINGS_KEY);
-  const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
 
   const terms = String(query).toLowerCase().match(/[\p{L}\p{N}]+/gu)?.filter(t => t.length > 1 && !STOPWORDS.has(t)) || [];
   const all = [];
@@ -446,7 +458,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       else if (msg.type === 'SEARCH') {
-        const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE, EMBEDDINGS_KEY, SETTINGS_KEY]);
+        const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE, SETTINGS_KEY]);
         let bookmarks = stored[STORAGE_KEY]?.bookmarks;
 
         if (!bookmarks || !bookmarks.length) {
@@ -454,7 +466,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
 
         const apiKey = stored[API_KEY_STORAGE];
-        const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
+        const embeddingsMap = await getEmbeddings();
         const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
         let results = [], engineUsed = 'Local';
 
@@ -481,6 +493,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         sendResponse({ success: true, results, engineUsed });
       }
 
+      else if (msg.type === 'PREFETCH') {   // the panel pre-computes the query vector while the user is still typing
+        const key = (await chrome.storage.local.get(API_KEY_STORAGE))[API_KEY_STORAGE];
+        if (key && String(msg.query || '').trim().length > 2) embedQuery(String(msg.query), key).catch(() => {});
+        sendResponse({ success: true });
+      }
+
       else if (msg.type === 'GENERATE_EMBEDDINGS') {
         const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE]);
         const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
@@ -495,9 +513,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       }
 
       else if (msg.type === 'GET_EMBEDDINGS_STATUS') {
-        const stored = await chrome.storage.local.get([STORAGE_KEY, EMBEDDINGS_KEY]);
+        const stored = await chrome.storage.local.get(STORAGE_KEY);
         const total = stored[STORAGE_KEY]?.bookmarks?.length || 0;
-        const embedded = Object.keys(stored[EMBEDDINGS_KEY] || {}).length;
+        const embedded = Object.keys(await getEmbeddings()).length;
         sendResponse({ success: true, total, embedded });
       }
 

@@ -364,3 +364,7 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .busy svg{animation:spin 1.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.busy svg{animation:none}}
+/* list rows and setting rows run edge to edge so hover and selection fill the full width; content keeps its place */
+.list{margin-inline:calc(var(--sp-4) * -1)}
+.list>.row,.list>.skrow{padding-inline:var(--sp-4)}
+.sgroup .drow{margin-inline:calc(var(--sp-4) * -1);width:calc(100% + var(--sp-4) * 2);padding-inline:var(--sp-4)}

@@ -322,7 +322,7 @@ const app = $('#app');
 function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
   app.dataset.screen = S.screen;
-  const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['home', 'details', 'settings'].includes(S.screen) ? '' : statusFooter();
+  const foot = S.screen === 'results' && S.q && shown().length ? hintFooter() : '';
   app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '') + (S.keyDialog ? keyDialog() : '');
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   checkFavicons(app);

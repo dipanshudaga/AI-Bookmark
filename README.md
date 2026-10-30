@@ -1,6 +1,6 @@
 # AI Bookmarks
 
-Too many bookmarks to find the one you need? AI Bookmarks uses Gemini to index them, so you can search through them in plain words.
+Bookmarks you can actually find. AI Bookmarks uses Gemini to index the pages you save. Ask in plain words and it searches all of them.
 
 It works in Chrome and in other Chromium browsers, for example Brave. It needs version 114 or later.
 

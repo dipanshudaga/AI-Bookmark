@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AI Bookmarks",
   "version": "1.0.0",
-  "description": "Too many bookmarks to find the right one? Use AI to search through them in plain words.",
+  "description": "Bookmarks you can actually find. Ask in plain words and AI searches all of them.",
   "permissions": [
     "bookmarks",
     "favicon",

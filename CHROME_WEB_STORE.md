@@ -49,12 +49,12 @@ AI Bookmarks
 
 ### Summary (132 characters or fewer)
 ```
-Too many bookmarks to find the right one? Use AI to search through them in plain words.
+Bookmarks you can actually find. Ask in plain words and AI searches all of them.
 ```
 
 ### Description
 ```
-100+ bookmarks are hard to search by hand. AI Bookmarks lets AI search through them for you.
+Bookmarks you can actually find. Ask in plain words and AI searches all of them.
 
 HOW IT WORKS
 • Add a free Gemini key from Google AI Studio.

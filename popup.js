@@ -314,10 +314,8 @@ ${S.hasKey && !S.keyEdit
     <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
     ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all</button>`}</div>
     ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
-    <p class="note2">Titles and links are sent to Google when you use Gemini.</p>
   </section>
-  <p class="about">v${esc(ver)} · AI Bookmarks</p>
-  </div>${artBand()}</div></main>`;
+  </div><div class="foot-text"><p class="note2">Titles and links are sent to Google when you use Gemini.</p><p class="about">v${esc(ver)} · AI Bookmarks</p></div>${artBand()}</div></main>`;
 };
 
 const SCREENS = { home, results: resultsScreen, collections, details, settings };

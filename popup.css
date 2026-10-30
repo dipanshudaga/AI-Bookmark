@@ -301,3 +301,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 @keyframes mpulse{50%{transform:scale(1.3)}}
 @media (prefers-reduced-motion:reduce){.mosaic i.hd{animation:none}}
 .hero .raised:hover{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.foot-text{margin-top:auto;padding-top:var(--sp-5);display:grid;gap:var(--sp-3)}.foot-text+.art{margin-top:0;padding-top:var(--sp-3)}.foot-text .note2,.foot-text .about{margin:0}

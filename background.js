@@ -326,11 +326,18 @@ Category rules: choose the single best BROAD category. Group related topics unde
 Bookmarks:
 ${items}`;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ url_context: {} }], generationConfig: { temperature: 0.2 } })
-    });
+    let res;
+    try {
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ url_context: {} }], generationConfig: { temperature: 0.2 } }),
+        signal: AbortSignal.timeout(60000)   // a stuck page read must not hang the whole run
+      });
+    } catch (e) {
+      if (attempt === 2) throw new Error('Gemini took too long, try again');
+      continue;
+    }
     if (res.ok) {
       const data = await res.json();
       const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
@@ -352,6 +359,7 @@ async function writeJob(patch) {
 async function tagBookmarks({ force = false } = {}) {
   if (tagging) return;
   tagging = true;
+  const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000);   // stop Chrome from stopping the worker mid-run
   try {
     const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE, META_KEY]);
     const apiKey = stored[API_KEY_STORAGE];
@@ -389,6 +397,7 @@ async function tagBookmarks({ force = false } = {}) {
   } catch (e) {
     await writeJob({ running: false, error: e.message });
   } finally {
+    clearInterval(keepAlive);
     tagging = false;
   }
 }

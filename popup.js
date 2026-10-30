@@ -457,6 +457,7 @@ app.addEventListener('keydown', e => {
   await Promise.all([load(), loadStatus()]);
   render();
   if (tagRunning()) pollTags();
+  else if (S.tag?.job?.running && S.hasKey) { await api({ type: 'START_TAGGING' }); S.tag.job.updatedAt = Date.now(); pollTags(); }   // a run was cut short (browser closed, worker stopped): pick up where it left off
   if (IN_EXT) {   // the panel stays open, so follow bookmark changes made elsewhere (after the background re-index)
     let t;
     const soon = () => { clearTimeout(t); t = setTimeout(async () => { if (S.editing || S.adding || S.addTag || S.screen === 'settings') return; await load(); await loadStatus(); render(); }, 4000); };

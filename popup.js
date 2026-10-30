@@ -289,7 +289,7 @@ const settings = () => {
     : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}…`
     : job.error ? 'Stopped before finishing'
     : caughtUp ? (S.checkNew ? `${num(S.checkNew)} new ${S.checkNew === 1 ? 'bookmark' : 'bookmarks'} indexed` : 'Nothing new to index')
-    : all ? 'All caught up'
+    : all ? 'All indexed'
     : tagged ? `${num(tagged)} of ${num(n)} indexed` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
   const cnt = !all && (running || tagged) ? `${num(tagged)} of ${num(n)}${running ? '' : ' indexed'}` : '';

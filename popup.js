@@ -60,7 +60,7 @@ const store = {
 let BOOKMARKS = [], CATS = {}, META = {};
 const S = {
   screen: 'home', from: 'home', q: '', draft: '', filter: 'All', colOnly: null, lastCol: null, sort: 'relevance', sel: -1, results: [],
-  bm: null, loading: true, error: null, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false, copied: null,
+  bm: null, loading: true, error: null, confirm: false, confirmClear: false, keyDialog: false, editing: false, adding: false, addTag: false, copied: null,
   engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '',
   tag: null, tagTimer: null
 };
@@ -305,9 +305,7 @@ const settings = () => {
   </section>
   <section class="sgroup">
     <div class="srow"><span class="withicon">${ic('spark')}<span class="tx">Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
-${S.hasKey && !S.keyEdit
-      ? `<div class="srow"><span class="withicon">${ic('key')}<span class="tx">API key<small class="keymask">••••••••••••${esc(S.keyTail)}</small></span></span><span class="keyact"><button class="raised sm" data-a="keychange">Change</button><button class="raised sm danger" data-a="keyremove">Remove</button></span></div>`
-      : `<form class="srow col" data-form="key"><span class="withicon">${ic('key')}<span class="tx">API key<small>${esc(S.keyNote || (S.hasKey ? 'Paste a new key to replace the saved one.' : 'Not connected yet.'))}</small></span></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste your Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button>${S.hasKey ? '<button type="button" class="raised sm" data-a="keycancel">Cancel</button>' : ''}</div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>`}
+<button class="drow" data-a="keydlg">${ic('key')}<span><b>API key</b><small${S.hasKey ? ' class="keymask"' : ''}>${S.hasKey ? '••••••••••••' + esc(S.keyTail) : 'Not connected yet'}</small></span>${ic('chev', 'go')}</button>
   </section>
   <section class="sgroup"><h3>Your data</h3>
     <button class="drow" data-a="export">${ic('upload')}<span><b>Export bookmarks</b><small>HTML file, opens in any browser</small></span>${ic('chev', 'go')}</button>
@@ -324,7 +322,7 @@ function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
   app.dataset.screen = S.screen;
   const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['home', 'details', 'settings'].includes(S.screen) ? '' : statusFooter();
-  app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '');
+  app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '') + (S.keyDialog ? keyDialog() : '');
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   checkFavicons(app);
   $('.dlg [autofocus]', app)?.focus();
@@ -336,6 +334,14 @@ function render() {
 const clearDialog = () => `<div class="scrim" data-a="clearask"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dt" data-stop>
   <h3 id="dt">Clear tags and index?</h3><p>This removes the tags, summaries and search index Gemini made. Your bookmarks aren’t touched, and you can tag them again any time.</p>
   <div class="dact"><button class="raised" data-a="clearask" autofocus>Cancel</button><button class="danger-solid" data-a="clearyes">Clear</button></div></div></div>`;
+const keyDialog = () => `<div class="scrim" data-a="keycancel"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="kt">
+  <h3 id="kt">Gemini API key</h3>
+  <p>${S.hasKey ? `Connected: <span class="keymask">••••••••••••${esc(S.keyTail)}</span>` : 'Add a free key so Gemini can tag and categorise your bookmarks.'}</p>
+  <form data-form="key" class="kform"><input class="well" type="password" name="k" placeholder="${S.hasKey ? 'Paste a new key to replace it' : 'Paste your Gemini key'}" aria-label="Gemini API key" autocomplete="off" autofocus>
+  ${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}
+  <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a>
+  <div class="dact"><button type="button" class="raised" data-a="keycancel">Cancel</button><button class="primary">Save</button></div></form>
+  ${S.hasKey ? '<button class="clearlink" data-a="keyremove">Remove key</button>' : ''}</div></div>`;
 let toastTimer;
 const toast = (msg, undo) => { clearTimeout(toastTimer); S.toast = { msg, undo }; render(); toastTimer = setTimeout(() => { S.toast = null; render(); }, 7000); };
 const go = (screen, patch = {}) => { Object.assign(S, { screen, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false }, patch); render(); };
@@ -422,12 +428,11 @@ app.addEventListener('click', async e => {
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
     case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
-    case 'keychange': S.keyEdit = true; S.keyNote = ''; return render();
-    case 'keycancel': S.keyEdit = false; return render();
-    case 'keyremove': await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyEdit = false; S.keyNote = 'Key removed.'; say('Key removed'); return render();
-    case 'keyfocus': $('input[name=k]', app)?.scrollIntoView({ block: 'center' }); $('input[name=k]', app)?.focus(); return;
+    case 'keydlg': S.keyDialog = true; S.keyNote = ''; return render();
+    case 'keycancel': S.keyDialog = false; return render();
+    case 'keyremove': await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyDialog = false; say('Key removed'); return render();
+    case 'keyfocus': S.keyDialog = true; S.keyNote = ''; return render();
     case 'obskip': try { localStorage.setItem('ob_skip', '1'); } catch { /* storage unavailable */ } return render();
-    case 'keyopen': S.keyOpen = !S.keyOpen; S.keyNote = ''; return render();
     case 'moreopen': S.moreOpen = !S.moreOpen; S.confirmClear = false; return render();
     case 'rebuild': return rebuild();
     case 'retry': S.loading = true; S.error = null; render(); await refresh(); return;
@@ -465,12 +470,12 @@ app.addEventListener('submit', async e => {
   }
   if (f === 'key') {
     const k = String(d.get('k')).trim(); if (!k) return;
-    const r = await api({ type: 'SAVE_API_KEY', apiKey: k }); S.hasKey = r.success; S.keyTail = r.success ? k.slice(-4) : ''; S.keyEdit = !r.success; S.keyNote = r.success ? '' : 'Could not save the key.'; render();
+    const r = await api({ type: 'SAVE_API_KEY', apiKey: k }); S.hasKey = r.success; S.keyTail = r.success ? k.slice(-4) : ''; S.keyDialog = !r.success && !!$('.dlg', app); S.keyNote = r.success ? '' : 'Could not save the key.'; render();
   }
 });
 app.addEventListener('keydown', e => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('input[name=q]', app)?.focus(); return; }
-  if (e.key === 'Escape') { if (S.confirm || S.confirmClear || S.editing || S.adding || S.addTag) { S.confirm = S.confirmClear = S.editing = S.adding = S.addTag = false; render(); } return; }
+  if (e.key === 'Escape') { if (S.confirm || S.confirmClear || S.keyDialog || S.editing || S.adding || S.addTag) { S.confirm = S.confirmClear = S.keyDialog = S.editing = S.adding = S.addTag = false; render(); } return; }
   if (S.screen !== 'results' || S.loading) return;
   const r = shown().slice(0, LIST_CAP);
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); S.sel = Math.max(0, Math.min(r.length - 1, S.sel + (e.key === 'ArrowDown' ? 1 : -1))); render(); }

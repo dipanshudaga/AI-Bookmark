@@ -341,3 +341,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .mosaic{grid-template-columns:repeat(10,minmax(0,1fr));gap:6px}.mosaic i{aspect-ratio:auto;height:28px;border-radius:6px}
 .mosaic i{height:auto;aspect-ratio:1;border-radius:6px}
 @keyframes mpulse{50%{transform:scale(1.08)}}
+.kform{display:grid;gap:var(--sp-3)}.kform .keylink{margin:0}.dlg .clearlink{justify-self:center;padding:0}
+.kform input{height:var(--ctl);padding:0 var(--sp-3);font-size:var(--fs-base);width:100%}

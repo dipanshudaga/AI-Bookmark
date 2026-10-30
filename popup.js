@@ -196,12 +196,12 @@ const obSeen = () => { try { return localStorage.getItem('ob_skip') === '1'; } c
 const onboard = () => {
   const tagged = S.tag?.tagged || 0, running = tagRunning();
   if (obSeen() || tagged || S.loading) return '';
-  if (running) return `<section class="ob"><h3>Organising your bookmarks…</h3><p>You can keep searching. This runs in the background.</p></section>`;
+  if (running) return `<section class="ob"><h3>Tagging your bookmarks…</h3><p>You can keep searching.</p></section>`;
   return S.hasKey
-    ? `<section class="ob"><h3>Key saved. One last step</h3><p>Gemini reads each site and adds tags, a summary and a better collection, so search finds more.</p><button class="primary" data-a="tagnow">${ic('spark')} Organise with Gemini</button></section>`
-    : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Your bookmarks are already grouped. Add a free Gemini key to add tags and summaries and categorise the rest more accurately.</p>
+    ? `<section class="ob"><h3>Key saved</h3><p>Next, Gemini tags and categorises your bookmarks.</p><button class="primary" data-a="tagnow">${ic('spark')} Get started</button></section>`
+    : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Add a free Gemini key to tag and categorise your bookmarks.</p>
       <form class="keyline" data-form="key"><input class="well" type="password" name="k" placeholder="Paste Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></form>
-      <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a><small>Titles and links are sent to Google.</small></section>`;
+      <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a></section>`;
 };
 const home = () => {
   if (S.loading) return `<main>${searchBox()}${skeleton()}</main>`;

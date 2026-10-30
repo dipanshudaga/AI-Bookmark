@@ -40,8 +40,8 @@ const BADGES = [
 ];
 const badgeFor = name => `assets/badges/${(BADGES.find(([re]) => re.test(name)) || [0, 'folder'])[1]}.webp`;
 const badge = (name, cls = '') => `<img class="badge ${cls}" src="${badgeFor(name)}" alt="" width="36" height="36">`;
-const ART = { home: 'banner-home', results: 'strip-search', collections: 'strip-collections', details: 'strip-details', settings: 'strip-settings' };
-const artBand = () => `<div class="art ${S.screen === 'home' ? 'tall' : ''}" aria-hidden="true"><img src="assets/img/${ART[S.screen === 'results' && !S.q ? 'collections' : S.screen]}.webp" alt=""></div>`;
+const ART = { home: ['banner-home', 298], results: ['strip-search', 216], collections: ['strip-collections', 194], details: ['strip-details', 172], settings: ['strip-settings', 208] };
+const artBand = () => { const [name, h] = ART[S.screen === 'results' && !S.q ? 'collections' : S.screen]; return `<div class="art" aria-hidden="true"><img src="assets/img/${name}.webp" alt="" width="880" height="${h}"></div>`; };
 const ENGINES = [['auto', 'Auto'], ['embeddings', 'Meaning (embeddings)'], ['generative', 'Gemini'], ['local', 'Keyword only']];
 const STOP = new Set('a an the of for to in on and or with about how what is are my that'.split(' '));
 const LIST_CAP = 200;
@@ -165,7 +165,7 @@ const home = () => {
   if (S.loading) return `<main>${searchBox()}${skeleton()}</main>`;
   if (S.error) return `<main>${message('Couldn’t load bookmarks', S.error, ['retry', 'Try again'])}</main>`;
   if (!BOOKMARKS.length) return `<main>${searchBox()}${message('No bookmarks yet', 'Save a page in Chrome, or import bookmarks from Chrome’s bookmark manager, and they appear here.', ['import', 'Open bookmark manager'])}</main>`;
-  const recent = [...BOOKMARKS].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 4);
+  const recent = [...BOOKMARKS].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 3);
   return `<main>${searchBox()}
     <div class="sec"><h2>Recently saved</h2><button data-a="all">See all ${ic('arrow')}</button></div>
     <ul class="list">${recent.map(b => row(b)).join('')}</ul></main>`;

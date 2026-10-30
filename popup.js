@@ -292,9 +292,10 @@ const settings = () => {
   <section class="hero">
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
     <ul class="checks">${statusLine}</ul></div>${S.hasKey ? `<img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true">` : ''}</div>
-    ${S.hasKey ? `<div class="barrow"><div class="bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
-    <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>` : ''}
-    <p class="hint">${S.hasKey ? 'One tap tags and categorises everything. You can close this panel while it works.' : 'Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.'}</p>
+    ${S.hasKey ? `<div class="bar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>
+    <button class="${all && !running ? 'raised' : 'primary'}" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>
+    <p class="hint">${esc(running ? 'You can close this panel while it works.' : job.error ? 'Your progress is saved. Try again.' : all ? (S.settings.autoTagNew !== false ? 'New saves are added automatically.' : 'Run this after saving new bookmarks.') : 'One tap tags and categorises everything.')}</p>`
+      : `<p class="hint">Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.</p>`}
   </section>
   <section class="sgroup"><h3>Automatic</h3>
     <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>

@@ -276,4 +276,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .checks li.ok i{background:var(--accent);border-color:var(--accent)}
 .checks li.ok{color:var(--ink)}
 .keymask{font-family:var(--font-mono);letter-spacing:.04em}.keyact{flex:none;display:flex;gap:var(--sp-2);flex-direction:row!important}.keyline .raised.sm{height:var(--ctl)}
-.hero-top{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}.hero-l{display:grid;gap:var(--sp-2);min-width:0}.hero-art{flex:none;height:64px;width:auto;max-width:42%;object-fit:contain}
+.hero-top{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)}.hero-l{display:grid;gap:var(--sp-2);min-width:0}.hero-art{flex:none;width:112px;height:76px;object-fit:contain;object-position:right center}
+.hero .bar{height:6px}.hero .bar.done{background:var(--accent-tint)}.hero .bar.done i{background:var(--lime);box-shadow:inset 0 0 0 1px var(--accent)}.hero .raised{width:100%}.hero .hint{min-height:1.4em}

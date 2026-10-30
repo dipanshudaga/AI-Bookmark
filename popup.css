@@ -302,3 +302,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 @keyframes catflip{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}}
 @keyframes catleg{from{transform:rotate(-35deg)}to{transform:rotate(35deg)}}
 @media (prefers-reduced-motion:reduce){.cat-in,.cat-svg,.cat .lg1,.cat .lg2{animation:none}}
+.fbar{height:28px;border-radius:6px}.cat-in{top:6px}

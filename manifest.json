@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AI Bookmarks",
   "version": "1.0.0",
-  "description": "Find any bookmark by meaning. Gemini indexes your bookmarks so you can search in plain words.",
+  "description": "Too many bookmarks to find the right one? Use AI to search through them in plain words.",
   "permissions": [
     "bookmarks",
     "favicon",

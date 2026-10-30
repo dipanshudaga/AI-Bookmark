@@ -1,6 +1,6 @@
 # AI Bookmarks
 
-Find any bookmark by its meaning. AI Bookmarks is a browser extension that uses Gemini to index the pages you save. You type a plain question. The extension shows the bookmarks that answer it.
+Too many bookmarks to find the one you need? AI Bookmarks uses Gemini to index them, so you can search through them in plain words.
 
 It works in Chrome and in other Chromium browsers, for example Brave. It needs version 114 or later.
 

@@ -49,12 +49,12 @@ AI Bookmarks
 
 ### Summary (132 characters or fewer)
 ```
-Find any bookmark by meaning. Gemini indexes your bookmarks so you can search in plain words.
+Too many bookmarks to find the right one? Use AI to search through them in plain words.
 ```
 
 ### Description
 ```
-Find a saved page by what it is about. AI Bookmarks shows the bookmarks that answer your question.
+100+ bookmarks are hard to search by hand. AI Bookmarks lets AI search through them for you.
 
 HOW IT WORKS
 • Add a free Gemini key from Google AI Studio.

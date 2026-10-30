@@ -25,7 +25,7 @@
 }
 *{box-sizing:border-box;margin:0}
 :root{color-scheme:light}
-html,body{width:440px;height:600px;overflow:hidden;background:var(--bg)}
+html,body{width:100%;height:100%;min-width:320px;overflow:hidden;background:var(--bg)}
 body{font-family:var(--font-ui);font-size:var(--fs-base);line-height:var(--lh);color:var(--ink)}
 .app{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg)}
 :where(.app) button{cursor:pointer;border:0;background:none;font:inherit;color:inherit}
@@ -43,12 +43,14 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .circle{width:var(--hit);height:var(--hit);border-radius:var(--r-md);display:grid;place-items:center;flex:none;color:var(--ink)}
 .circle:hover{background:var(--hover)}
 .circle[aria-current="page"]{background:var(--accent-tint);color:var(--accent-text)}
-.art{flex:none}
+.scroll>*{flex:none}
+/* illustration: last thing in the scroll; when the content is short it rests at the bottom of the panel */
+.art{width:100%;max-width:340px;margin:auto auto 0;padding-top:var(--sp-5)}
 .art img{display:block;width:100%;height:auto}
 
 /* layout */
 main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;padding:var(--sp-3) var(--sp-4) 0;gap:10px;overflow:hidden}
-.scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;margin:0 calc(var(--sp-4) * -1);padding:0 var(--sp-4) var(--sp-3)}
+.scroll{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--line-2) transparent;margin:0 calc(var(--sp-4) * -1);padding:0 var(--sp-4) var(--sp-3)}
 .ttl{display:flex;align-items:center;justify-content:space-between;flex:none;gap:var(--sp-3)}
 .ttl h2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-display);font-size:var(--fs-xl);font-weight:var(--fw-bold);line-height:var(--lh-tight)}
 .ttl .sp{width:var(--hit)}
@@ -102,6 +104,7 @@ main{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;padding:
 .row .main{flex:1;min-width:0;display:flex;align-items:center;gap:var(--sp-3);padding:8px var(--sp-2);text-align:left;color:var(--ink)}
 .fav{width:40px;height:40px;border-radius:var(--r-md);display:grid;place-items:center;flex:none;background:var(--tile);border:1px solid var(--line);font-family:var(--font-display);font-weight:var(--fw-bold);font-size:var(--fs-md);color:var(--accent-text);overflow:hidden}
 .fav img{width:24px;height:24px;border-radius:4px}
+.fav.inv img{filter:drop-shadow(1px 0 0 var(--ink)) drop-shadow(-1px 0 0 var(--ink)) drop-shadow(0 1px 0 var(--ink)) drop-shadow(0 -1px 0 var(--ink))}
 .fav img+span{display:none}
 .txt{min-width:0;flex:1}
 .t{display:block;font-size:var(--fs-base);font-weight:var(--fw-semibold);line-height:var(--lh-tight);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -124,11 +127,6 @@ mark{background:var(--match);color:var(--on-match);font-weight:inherit;border-ra
 .crow .n{font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--ink-2)}
 .crow .arrow{color:var(--accent-text);width:18px}
 .crow.cur{background:var(--sel);box-shadow:inset 3px 0 0 var(--accent)}
-.plus{width:var(--hit);height:var(--hit);padding:0;display:grid;place-items:center;border-radius:var(--r-md)}
-.plus svg{stroke-width:2.4}
-.newc{display:flex;gap:var(--sp-2);flex:none}
-.newc input{flex:1;height:var(--ctl);padding:0 var(--sp-3)}
-
 /* footer */
 .foot{flex:none;height:40px;display:flex;align-items:center;justify-content:space-between;padding:0 var(--sp-4);border-top:1px solid var(--line);font-family:var(--font-mono);font-size:var(--fs-sm);color:var(--ink-2)}
 .foot.hint{font-family:var(--font-ui);font-size:var(--fs-xs);color:var(--ink-3)}
@@ -247,3 +245,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .status.compact .st-act .sm{width:100%}
 
 .keylink{font-size:var(--fs-sm);align-self:flex-start}
+
+@media (max-width:380px){.statpair{grid-template-columns:1fr}}

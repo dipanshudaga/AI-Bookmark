@@ -10,6 +10,11 @@ const CUSTOM_CATS_KEY = 'ai_bookmark_custom_categories'; // [name]
 const TAGJOB_KEY = 'ai_bookmark_tagjob'; // { running, total, done, failed, error, updatedAt }
 const STOPWORDS = new Set('a an the of for to in on and or with about how what is are my that'.split(' '));
 const LOCAL_CONFIDENT = 5;   // a single title, tag or category hit is enough to trust the instant local match
+// Gemini picks ONE broad category per bookmark from this fixed list, so related topics stay together
+// (typography, fonts, illustration, branding, 3D art and inspiration all belong to Design) and the list never sprawls.
+const AI_CATEGORIES = ['Design', 'AI Tools', 'Development', 'Video & Media', 'Productivity', 'Reading & News', 'Shopping & Fashion', 'Travel & Maps',
+  'Data & Research', 'Learning', 'Archives & Museums', 'Social & Community', 'Tools & Utilities', 'Finance', 'Food & Drink', 'Games', 'Health & Fitness', 'Others'];
+const normalizeCategory = c => AI_CATEGORIES.find(x => x.toLowerCase() === String(c || '').trim().toLowerCase()) || 'Others';
 const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // fast, can read pages through the url_context tool
 const META_KEY = 'ai_bookmark_meta'; // { bookmarkId: { tags: [], summary, lastAccessed } }
 const DEFAULT_API_KEY = 'REMOVED';
@@ -47,14 +52,13 @@ function flattenBookmarks(nodes, path = '') {
 // Keep generic words (collection, gallery, tool, guide, library...) out of this list: one weak word must not decide a category.
 const CATEGORY_KEYWORDS = {
   'Design': ['*design', 'font', 'texture', 'hdri', 'framer', 'webflow', 'canva', 'adobe', 'pinterest', 'mobbin', 'figma', 'dribbble', 'behance', 'ux!', 'ui design', 'ui kit', 'icons', 'typography', 'typeface', 'palette', 'gradient', 'shader', 'illustration', 'poster', 'packaging', 'landing page', 'aesthetic', 'branding', 'moodboard', 'awwwards', 'webgl', 'three.js', 'paper.design', 'pen.dev', 'threeui', 'landdding', 'recraft', 'inspora', 'recent.design', 'collectui', 'screensdesign', 'deck.gallery', 'inspiration'],
-  'AI Tools': ['ai!', 'gpt!', 'llm!', 'openai', 'claude', 'gemini', 'midjourney', 'stable diffusion', 'dall-e', 'image generat', 'krea!', 'reve!', 'meigen', 'imageory', 'quiver', 'anthropic', 'mistral', 'huggingface'],
+  'AI Tools': ['ai!', 'gpt!', 'llm!', 'openai', 'claude', 'gemini', 'midjourney', 'stable diffusion', 'dall-e', 'image generat', 'krea!', 'reve!', 'meigen', 'imageory', 'quiver', 'anthropic', 'mistral', 'huggingface', 'agent', 'automation', 'manus!', 'hermes', 'langchain', 'autogen', 'crew!', 'browser-use', 'agentic', 'prompt', 'skills.sh', 'skillry', 'youmind', 'skill'],
   'Development': ['github', 'code!', 'programming', 'developer', 'react', 'javascript', 'python', 'api!', 'sdk!', 'npm!', 'framework', 'codepen', 'markdown', 'markitdown', 'vite!', 'next.js', 'typescript', 'rust!', 'golang', 'docker', 'css!'],
   'Video & Media': ['video', 'youtube', 'vimeo', 'stream', 'movie', 'film', 'stop motion', 'tavus', 'ltx!', 'decart', 'cardboard', 'sound', 'audio', 'music', 'podcast', 'muesli'],
-  'AI Agents': ['agent', 'automation', 'manus!', 'hermes', 'langchain', 'autogen', 'crew!', 'browser-use', 'agentic'],
-  'Data Visualization': ['data viz', 'chart', 'visualization', 'infographic', 'pudding', 'information is beautiful', 'ourworldindata', 'diagram', 'observable', 'd3!'],
+  'Data & Research': ['data viz', 'chart', 'visualization', 'infographic', 'pudding', 'information is beautiful', 'ourworldindata', 'diagram', 'observable', 'd3!', 'research', 'dataset'],
   'Archives & Museums': ['museum', 'smithsonian', 'cooper hewitt', 'poster house', 'letterform archive', 'internet archive', 'archive.org', 'archives', 'heritage'],
   'Productivity': ['productivity', 'notion', 'calendar', 'todo', 'kanban', 'delphi', 'ascii!', 'lummi', 'grainrad', 'playgrnd', 'linear.app', 'raycast'],
-  'Prompts & Resources': ['prompt', 'tutorial', 'course', 'skill', 'skills.sh', 'skillry', 'youmind'],
+  'Learning': ['tutorial', 'course', 'lesson', 'academy', 'learn'],
 };
 const escapeRe = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const CATEGORY_MATCHERS = Object.entries(CATEGORY_KEYWORDS).map(([cat, kws]) => [cat, kws.map(kw => {
@@ -100,8 +104,8 @@ async function indexBookmarks() {
   const overrides = extra[OVERRIDES_KEY] || {};
   const meta = extra[META_KEY] || {};
   const indexed = flat.map(bm => {
-    const categories = overrides[bm.id] ? [overrides[bm.id]] : categorizeBookmark(bm);
     const m = meta[bm.id] || {};
+    const categories = overrides[bm.id] ? [overrides[bm.id]] : m.aiCategory ? [m.aiCategory] : categorizeBookmark(bm);
     const tags = [...new Set([...(m.tags || []), ...(m.aiTags || [])])];
     const summary = m.summary || m.aiSummary || '';
     return {
@@ -317,7 +321,8 @@ async function tagBatch(batch, apiKey) {
   const items = batch.map((b, i) => `[${i}] "${b.title}" | ${b.url} | folder: ${b.folderPath}`).join('\n');
   const prompt = `You tag a person's saved web bookmarks so they are easy to find later with natural-language search.
 Read each page if you can. If a page cannot be read, infer from the title and domain.
-Return ONLY a JSON array with one object per bookmark: {"i": <index>, "tags": [3 to 6 short lowercase tags: what it is, what it is for, the topic, and synonyms someone might search for], "summary": "<one plain sentence, at most 25 words, what the site offers>"}.
+Return ONLY a JSON array with one object per bookmark: {"i": <index>, "category": "<exactly one of: ${AI_CATEGORIES.join(' | ')}>", "tags": [3 to 6 short lowercase tags: what it is, what it is for, the topic, and synonyms someone might search for], "summary": "<one plain sentence, at most 25 words, what the site offers>"}.
+Category rules: choose the single best BROAD category. Group related topics under one broad category: typography, fonts, illustration, graphics, branding, 3D art, textures and design inspiration all belong to "Design"; sound effects, music, film and streaming belong to "Video & Media". If nothing clearly fits, use "Others". Never invent a category and never use any value that is not in the list.
 
 Bookmarks:
 ${items}`;
@@ -354,7 +359,7 @@ async function tagBookmarks({ force = false } = {}) {
     if (!apiKey) throw new Error('Add a Gemini API key in Settings first.');
     const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
     let meta = stored[META_KEY] || {};
-    const todo = bookmarks.filter(b => b.url && /^https?:/.test(b.url) && (force || !meta[b.id]?.aiAt));
+    const todo = bookmarks.filter(b => b.url && /^https?:/.test(b.url) && (force || !meta[b.id]?.aiAt || !meta[b.id]?.aiCategory));
     await writeJob({ running: true, total: todo.length, done: 0, failed: 0, error: null });
     let done = 0, failed = 0, lastError = null;
     for (let i = 0; i < todo.length; i += TAG_BATCH) {
@@ -365,7 +370,7 @@ async function tagBookmarks({ force = false } = {}) {
         for (const o of out) {
           const b = batch[o.i];
           if (!b) continue;
-          meta[b.id] = { ...(meta[b.id] || {}), aiTags: cleanTags(o.tags), aiSummary: String(o.summary || '').slice(0, 220), aiAt: Date.now() };
+          meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(o.category), aiTags: cleanTags(o.tags), aiSummary: String(o.summary || '').slice(0, 220), aiAt: Date.now() };
         }
         await chrome.storage.local.set({ [META_KEY]: meta });
         done += batch.length;
@@ -553,7 +558,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const stored = await chrome.storage.local.get([TAGJOB_KEY, META_KEY, STORAGE_KEY]);
         const meta = stored[META_KEY] || {};
         const total = stored[STORAGE_KEY]?.bookmarks?.length || 0;
-        const tagged = Object.values(meta).filter(m => m.aiAt).length;
+        const tagged = Object.values(meta).filter(m => m.aiAt && m.aiCategory).length;
         sendResponse({ success: true, job: stored[TAGJOB_KEY] || {}, tagged, total });
       }
 
@@ -613,6 +618,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   })();
   return true; // keep channel open for async response
 });
+
+// ─── Side panel: clicking the toolbar icon opens a docked panel that stays open across tabs and clicks ───
+if (chrome.sidePanel?.setPanelBehavior) {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(e => console.warn('Side panel setup failed:', e));
+}
 
 // ─── Auto-index on install ──────────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(() => {

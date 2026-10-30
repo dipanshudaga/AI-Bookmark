@@ -4,12 +4,15 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const IN_EXT = typeof chrome !== 'undefined' && !!chrome.runtime?.id;
 
-const GEAR = [0, 45, 90, 135, 180, 225, 270, 315].map(k => `<rect fill="currentColor" stroke="none" x="10.4" y="2" width="3.2" height="4.4" rx="1" transform="rotate(${k} 12 12)"/>`).join('')
-  + '<path fill="currentColor" stroke="none" fill-rule="evenodd" d="M12 5.2a6.8 6.8 0 1 0 0 13.6 6.8 6.8 0 0 0 0-13.6zm0 4a2.8 2.8 0 1 1 0 5.6 2.8 2.8 0 0 1 0-5.6z"/>';
+const GEAR = (() => {   // outline cog: 8 trapezoid teeth around a ring, plus the hub circle
+  const pts = [], rad = d => d * Math.PI / 180;
+  for (let i = 0; i < 8; i++) for (const [deg, r] of [[-13, 7.3], [-8, 9.7], [8, 9.7], [13, 7.3]]) { const a = i * Math.PI / 4 + rad(deg); pts.push([12 + r * Math.cos(a), 12 + r * Math.sin(a)]); }
+  return `<path d="M${pts.map(p => p.map(v => v.toFixed(2)).join(' ')).join('L')}Z"/><circle cx="12" cy="12" r="3"/>`;
+})();
 const P = {
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>', gear: GEAR,
-  grid: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5 9-5z"/><path d="m3 12.5 9 5 9-5"/><path d="m3 17 9 5 9-5"/>',
   open: '<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>', check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   back: '<path d="m15 5-7 7 7 7"/>', trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>',
@@ -88,7 +91,7 @@ function pollTags() {
   S.tagTimer = setInterval(async () => {
     const tg = await api({ type: 'GET_TAG_STATUS' });
     if (tg.success) S.tag = tg;
-    if (!tagRunning()) { clearInterval(S.tagTimer); await load(); await loadStatus(); say('Tagging finished'); }
+    if (!tagRunning()) { clearInterval(S.tagTimer); await load(); await loadStatus(); say('Organising finished'); }
     render();
   }, 2000);
 }
@@ -111,8 +114,36 @@ const hl = (text, q) => {
   });
   return out;
 };
+// Some sites serve an all-white favicon meant for dark backgrounds (GitHub does). It vanishes on our light tile,
+// so icons that are almost entirely white get a dark tile instead.
+const FAV_LIGHT = new Map();
+function isLightIcon(img) {
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 16;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(img, 0, 0, 16, 16);
+    const d = x.getImageData(0, 0, 16, 16).data;
+    let n = 0, sum = 0, dark = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 40) continue;
+      const l = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+      n++; sum += l; if (l < 0.55) dark++;
+    }
+    return n > 8 && sum / n > 0.8 && dark / n < 0.06;
+  } catch { return false; }
+}
+function checkFavicons(root) {
+  root.querySelectorAll('img[data-fav]').forEach(img => {
+    const mark = () => {
+      const light = FAV_LIGHT.has(img.src) ? FAV_LIGHT.get(img.src) : isLightIcon(img);
+      FAV_LIGHT.set(img.src, light);
+      img.parentElement.classList.toggle('inv', light);
+    };
+    if (img.complete && img.naturalWidth) mark(); else img.addEventListener('load', mark, { once: true });
+  });
+}
 const favSrc = u => IN_EXT ? `${chrome.runtime.getURL('/_favicon/')}?pageUrl=${encodeURIComponent(u)}&size=32` : '';
-const fav = b => `<span class="fav" aria-hidden="true">${IN_EXT ? `<img data-fav src="${esc(favSrc(b.url))}" alt="">` : ''}<span>${esc(initial(b.title || host(b.url)))}</span></span>`;
+const fav = b => `<span class="fav${FAV_LIGHT.get(favSrc(b.url)) ? ' inv' : ''}" aria-hidden="true">${IN_EXT ? `<img data-fav src="${esc(favSrc(b.url))}" alt="">` : ''}<span>${esc(initial(b.title || host(b.url)))}</span></span>`;
 const base = () => S.q ? S.results : S.colOnly ? (CATS[S.colOnly] || []) : BOOKMARKS;
 const shown = () => {
   let r = base();
@@ -140,7 +171,7 @@ const hintFooter = () => `<footer class="foot hint"><span>Use <kbd>↑</kbd> <kb
 const header = () => `<header class="hdr">
   <button class="brand" data-a="home" aria-label="AI Bookmarks, go to home"><img class="logo" src="assets/img/logo.webp" alt="" width="28" height="28">
     <span><span class="wm">AI BOOKMARKS</span><span class="sub">Personal internet archive</span></span></button>
-  <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('grid')}</button>
+  <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('layers')}</button>
   <button class="circle" data-a="settings" aria-label="Settings" ${S.screen === 'settings' ? 'aria-current="page"' : ''}>${ic('gear')}</button></header>`;
 const searchBox = () => `<form class="cons" data-form="search" role="search"><div class="search well">${ic('search')}
   <input type="text" name="q" value="${esc(S.draft)}" placeholder="Search your bookmarks..." aria-label="Search your bookmarks" autocomplete="off" spellcheck="false">
@@ -168,7 +199,7 @@ const home = () => {
   const recent = [...BOOKMARKS].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 8);
   return `<main>${searchBox()}
     <div class="sec"><h2>Recently saved</h2><button data-a="all">See all ${ic('arrow')}</button></div>
-    <div class="scroll"><ul class="list">${recent.map(b => row(b)).join('')}</ul></div></main>`;
+    <div class="scroll"><ul class="list">${recent.map(b => row(b)).join('')}</ul>${artBand()}</div></main>`;
 };
 
 const browse = () => {
@@ -176,7 +207,7 @@ const browse = () => {
   const body = S.loading ? skeleton() : r.length
     ? `<ul class="list" role="list">${r.slice(0, LIST_CAP).map(x => row(x)).join('')}</ul>${r.length > LIST_CAP ? `<p class="more">Showing ${LIST_CAP} of ${num(r.length)}.</p>` : ''}`
     : message(`${name} is empty`, 'Open a bookmark and move it here from its details.', ['browseback', 'Go back']);
-  return `<main><div class="ttl"><button class="sq raised" data-a="browseback" aria-label="Back">${ic('back')}</button><h2>${esc(name)}</h2><span class="cnt" aria-label="${plural(r.length, 'bookmark')}">${num(r.length)}</span></div><div class="scroll">${body}</div></main>`;
+  return `<main><div class="ttl"><button class="sq raised" data-a="browseback" aria-label="Back">${ic('back')}</button><h2>${esc(name)}</h2><span class="cnt" aria-label="${plural(r.length, 'bookmark')}">${num(r.length)}</span></div><div class="scroll">${body}${artBand()}</div></main>`;
 };
 
 const resultsScreen = () => {
@@ -193,15 +224,14 @@ const resultsScreen = () => {
   const sorts = [['relevance', 'Relevance'], ['recent', 'Recently saved'], ['accessed', 'Recently accessed'], ['title', 'Title']].filter(o => S.q || o[0] !== 'relevance');
   return `<main>${searchBox()}
     <div class="sec"><span class="count">${S.loading ? 'Searching…' : label}</span><label class="sort"><span class="sv" aria-hidden="true">${(sorts.find(o => o[0] === S.sort) || sorts[0])[1]}</span>${ic('down')}<select data-a="sort" aria-label="Sort by">${sorts.map(o => `<option value="${o[0]}" ${S.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select></label></div>
-    <div class="scroll">${body}</div></main>`;
+    <div class="scroll">${body}${artBand()}</div></main>`;
 };
 
 const collections = () => {
   const rows = [{ name: 'All Bookmarks', n: BOOKMARKS.length, key: null },
     ...Object.entries(CATS).sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name, l]) => ({ name, n: l.length, key: name }))];
-  return `<main><div class="ttl"><h2>Your collections</h2><button class="plus circle primary" data-a="newc" aria-label="Create collection" aria-expanded="${S.adding}">${ic('plus')}</button></div>
-    ${S.adding ? `<form class="newc" data-form="newc"><input class="well" name="n" placeholder="Collection name" aria-label="Collection name" maxlength="28" autocomplete="off"><button class="primary">Create</button></form>` : ''}
-    <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button></li>`).join('')}</ul></div></main>`;
+  return `<main><div class="ttl"><h2>Collections</h2></div>
+        <div class="scroll"><ul class="list">${rows.map(r => `<li class="row crow ${S.lastCol === r.key ? 'cur' : ''}"><button class="main" data-a="opencol" data-k="${esc(r.key || '')}">${badge(r.name)}<span class="txt"><span class="t">${esc(r.name)}</span></span><span class="n">${num(r.n)}</span>${ic('chev', 'arrow')}</button></li>`).join('')}</ul>${artBand()}</div></main>`;
 };
 
 const details = () => {
@@ -223,7 +253,7 @@ const details = () => {
     <div class="field tags"><span class="lbl" id="tg">Tags</span><div class="chips" role="list" aria-labelledby="tg">${tags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}${aiTags.map(t => `<span class="chip ai" role="listitem" title="Added by Gemini">${ic('spark', 'spark')}${esc(t)}<button data-a="tagdel" data-k="ai" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}
       ${S.addTag ? `<form data-form="tag"><input class="tagin well" name="t" aria-label="New tag" maxlength="20" autocomplete="off"></form>` : `<button class="chip add raised" data-a="addtag" aria-label="Add tag">${ic('plus')}</button>`}</div></div>
     <dl class="meta"><div><dt>Saved</dt><dd>${fmt(b.dateAdded)}</dd></div><div><dt>Last accessed</dt><dd>${fmt(m.lastAccessed)}</dd></div><div><dt>URL</dt><dd title="${esc(b.url)}">${esc(b.url)}</dd></div></dl>`}
-  </div></div></main>`;
+  </div>${artBand()}</div></main>`;
 };
 
 const sw = (a, on, label) => `<button class="sw" role="switch" aria-checked="${on}" aria-label="${label}" data-a="${a}"><i></i></button>`;
@@ -232,31 +262,31 @@ const settings = () => {
   const pct = n ? Math.min(100, Math.round(S.embedded / n * 100)) : 0, local = S.engine === 'local';
   const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0;
   const tagPct = tagRunning() && job.total ? Math.round(((job.done || 0) + (job.failed || 0)) / job.total * 100) : (n ? Math.round(tagged / n * 100) : 0);
-  const tagNote = tagRunning() ? `Tagging ${num(job.done || 0)} of ${num(job.total || 0)}. You can close this popup.` : job.error ? `Last run: ${job.error}` : tagged ? 'Tags and summaries are used by every search mode.' : 'Not tagged yet. Takes about a minute per 60 bookmarks.';
+  const tagNote = tagRunning() ? `Organising ${num(job.done || 0)} of ${num(job.total || 0)}. You can close this panel.` : job.error ? `Last run: ${job.error}` : tagged ? 'Tags, summaries and collections come from Gemini.' : 'Not organised yet. Takes about a minute per 60 bookmarks.';
   const note = { ready: 'Meaning index complete', indexing: 'Indexing… keep this open', partial: `Meaning index ${num(S.embedded)} of ${num(n)}`, error: 'Last indexing run failed' }[st];
-  const tagShort = tagRunning() ? `Tagging ${num(job.done || 0)} of ${num(job.total || 0)}` : job.error ? 'Last run failed' : tagged ? 'Used by every search' : 'Not tagged yet';
+  const tagShort = tagRunning() ? `Organising ${num(job.done || 0)} of ${num(job.total || 0)}` : job.error ? 'Last run failed' : tagged ? 'Tags and collections' : 'Not organised yet';
   const bar = (label, v) => `<div class="barrow"><div class="bar" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${v}"><i style="width:${v}%"></i></div><span>${v}%</span></div>`;
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
-  <section class="sgroup"><h3>Index &amp; tags</h3>
+  <section class="sgroup"><h3>Index &amp; AI</h3>
     <div class="statpair">
       <div class="status compact"><h4>Index status</h4>
         <div><b>${num(n)}</b><small>${n === 1 ? 'bookmark' : 'bookmarks'}</small></div>
         <p class="note ${st === 'error' ? 'err' : ''}">${local ? 'Keyword search only' : note}</p>
         ${local ? '' : bar('Meaning index', pct)}
         <div class="st-act"><button class="raised sm" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button></div></div>
-      <div class="status compact"><h4>AI tags</h4>
-        <div><b>${num(tagged)}</b><small>of ${num(n)} tagged</small></div>
+      <div class="status compact"><h4>AI organise</h4>
+        <div><b>${num(tagged)}</b><small>of ${num(n)} organised</small></div>
         <p class="note ${job.error && !tagRunning() ? 'err' : ''}" title="${esc(tagNote)}">${esc(tagShort)}</p>
         ${bar('Tagging progress', tagPct)}
-        <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Tagging…' : (tagged ? 'Tag new' : 'Tag with Gemini')}</button></div></div>
+        <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Organising…' : (tagged ? 'Organise new' : 'Organise with Gemini')}</button></div></div>
     </div>
   </section>
   <section class="sgroup"><h3>Search</h3>
     <div class="srow"><span>Search engine<small>Auto: instant for short searches, Gemini for longer questions</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="srow"><span>Auto index new bookmarks<small>Index new saves as they happen</small></span>${sw('autoindex', S.settings.autoEmbedNew !== false, 'Auto index new bookmarks')}</div>
-    <div class="srow"><span>Auto-tag new bookmarks<small>Tags new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-tag new bookmarks')}</div>
+    <div class="srow"><span>Auto-organise new bookmarks<small>Tags and files new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-organise new bookmarks')}</div>
     <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Create a key in Google AI Studio ↗</a></form>
-    <p class="note2">Gemini reads each site to write tags and a one-line summary. Titles and links are sent to Google.</p>
+    <p class="note2">Gemini reads each site to write tags, a one-line summary and pick a collection. Titles and links are sent to Google.</p>
   </section>
   <section class="sgroup"><h3>Data &amp; privacy</h3>
     <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
@@ -264,7 +294,7 @@ const settings = () => {
     ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear the index, tags, summaries and custom collections? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
   </section>
   <p class="about">v${esc(ver)} · AI Bookmarks</p>
-  </div></div></main>`;
+  </div>${artBand()}</div></main>`;
 };
 
 const SCREENS = { home, results: resultsScreen, collections, details, settings };
@@ -274,8 +304,9 @@ function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
   app.dataset.screen = S.screen;
   const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['home', 'details', 'settings'].includes(S.screen) ? '' : statusFooter();
-  app.innerHTML = header() + artBand() + SCREENS[S.screen]() + foot;
+  app.innerHTML = header() + SCREENS[S.screen]() + foot;
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
+  checkFavicons(app);
   const inp = $('input[name=q]', app);
   if (inp && (hadSearch || focusSearch)) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
   focusSearch = false;
@@ -345,7 +376,6 @@ app.addEventListener('click', async e => {
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'autotag': await saveSettings({ autoTagNew: S.settings.autoTagNew === false }); return render();
-    case 'newc': S.adding = !S.adding; render(); return $('[name=n]', app)?.focus();
     case 'rebuild': return rebuild();
     case 'retry': S.loading = true; S.error = null; render(); await refresh(); return;
     case 'retry-search': return runSearch(S.q);
@@ -370,7 +400,6 @@ app.addEventListener('submit', async e => {
   e.preventDefault();
   const f = e.target.dataset.form, d = new FormData(e.target);
   if (f === 'search') { const q = String(d.get('q')).trim(); if (q) runSearch(q); }
-  if (f === 'newc') { const n = String(d.get('n')).trim(); if (n && !(n in CATS)) { await api({ type: 'ADD_CATEGORY', name: n }); S.adding = false; await load(); say('Collection created'); render(); } }
   if (f === 'edit') {
     const t = String(d.get('t')).trim(), u = String(d.get('u')).trim();
     if (!safeUrl(u)) { say('Enter a web address starting with http or https'); return; }
@@ -407,5 +436,10 @@ app.addEventListener('keydown', e => {
   await Promise.all([load(), loadStatus()]);
   render();
   if (tagRunning()) pollTags();
+  if (IN_EXT) {   // the panel stays open, so follow bookmark changes made elsewhere (after the background re-index)
+    let t;
+    const soon = () => { clearTimeout(t); t = setTimeout(async () => { if (S.editing || S.adding || S.addTag || S.screen === 'settings') return; await load(); await loadStatus(); render(); }, 4000); };
+    ['onCreated', 'onRemoved', 'onChanged', 'onMoved', 'onImportEnded'].forEach(ev => chrome.bookmarks[ev]?.addListener(soon));
+  }
   $('input[name=q]', app)?.focus();
 })();

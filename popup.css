@@ -349,3 +349,7 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .kform{gap:var(--sp-4)}
 .dact{margin-top:0;gap:var(--sp-2)}
 .dlg .clearlink{padding:0;margin-top:calc(var(--sp-2) * -1)}
+/* header nav: the page you are on is a bold violet stroke, no box */
+.circle[aria-current="page"],.circle[aria-current="page"]:hover{background:none;color:var(--accent)}
+.circle[aria-current="page"] svg{stroke-width:2.6}
+.circle:hover{background:var(--accent-tint);color:var(--accent-text)}

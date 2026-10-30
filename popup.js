@@ -199,7 +199,7 @@ const onboard = () => {
   if (running) return `<section class="ob"><h3>Organising your bookmarks…</h3><p>You can keep searching. This runs in the background.</p></section>`;
   return S.hasKey
     ? `<section class="ob"><h3>Key saved. One last step</h3><p>Gemini reads each site and adds tags, a summary and a better collection, so search finds more.</p><button class="primary" data-a="tagnow">${ic('spark')} Organise with Gemini</button></section>`
-    : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Your bookmarks are already sorted. Add a free Gemini key to add tags and summaries and sort the rest more accurately.</p>
+    : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Your bookmarks are already grouped. Add a free Gemini key to add tags and summaries and categorise the rest more accurately.</p>
       <form class="keyline" data-form="key"><input class="well" type="password" name="k" placeholder="Paste Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></form>
       <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a><small>Titles and links are sent to Google.</small></section>`;
 };
@@ -274,24 +274,28 @@ const settings = () => {
   const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0, running = tagRunning(), local = S.engine === 'local';
   const done = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 0;
   const tagPct = running && job.total ? done((job.done || 0) + (job.failed || 0), job.total) : done(tagged, n);
-  const idxPct = done(S.embedded, n);
-  const pct = S.hasKey ? Math.round((tagPct + (local ? tagPct : idxPct)) / 2) : idxPct;
+  const all = n && tagged >= n, finishing = all && !running && !local && st !== 'ready' && st !== 'error';
+  const pct = tagPct;
   const line = (ok, text) => `<li class="${ok ? 'ok' : ''}"><i>${ok ? '✓' : ''}</i>${text}</li>`;
-  const idxText = st === 'ready' ? 'Searchable by meaning' : st === 'indexing' ? 'Getting searchable…' : st === 'error' ? 'Search setup failed. Try again' : `Searchable by meaning (${num(S.embedded)} of ${num(n)})`;
-  const tagText = running ? `Tagging and sorting… ${num(job.done || 0)} of ${num(job.total || 0)}` : job.error ? 'Tagging stopped. Try again' : tagged >= n && n ? 'Tagged, summarised and sorted' : `Tagged and sorted (${num(tagged)} of ${num(n)})`;
+  const statusLine = !S.hasKey ? line(true, 'Keyword search is ready')
+    : running ? line(false, `Tagging and categorising… ${num(job.done || 0)} of ${num(job.total || 0)}`)
+    : job.error ? line(false, 'Stopped before finishing. Try again')
+    : finishing ? line(false, 'Finishing up…')
+    : all ? line(true, 'All bookmarks tagged and categorised')
+    : line(false, tagged ? `${num(tagged)} of ${num(n)} tagged and categorised` : 'Not started yet');
   const act = S.hasKey ? 'tagnow' : 'rebuild', busy = running || S.rebuilding || !n;
   const label = running ? 'Working on it…' : S.rebuilding ? 'Working on it…' : S.hasKey ? (tagged && tagged >= n ? 'Check for new bookmarks' : 'Get everything ready') : 'Update search';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
     <div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
-    <ul class="checks">${S.hasKey ? line(st === 'ready' && !local, idxText) : line(true, 'Keyword search is ready')}${S.hasKey ? line(tagged >= n && n && !running, tagText) : ''}</ul>
+    <ul class="checks">${statusLine}</ul>
     ${S.hasKey ? `<div class="barrow"><div class="bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
     <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>` : ''}
-    <p class="hint">${S.hasKey ? 'One tap tags, sorts and indexes everything. You can close this panel while it works.' : 'Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.'}</p>
+    <p class="hint">${S.hasKey ? 'One tap tags and categorises everything. You can close this panel while it works.' : 'Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.'}</p>
   </section>
   <section class="sgroup"><h3>Search</h3>
     <div class="srow"><span>How to search<small>Auto picks the fastest way for each search</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-    <div class="srow"><span>Get new bookmarks ready<small>Index, tag and sort new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
+    <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
   </section>
   <section class="sgroup"><h3>Gemini</h3>
 ${S.hasKey && !S.keyEdit

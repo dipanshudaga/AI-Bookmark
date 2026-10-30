@@ -365,11 +365,21 @@ async function rebuild() {
   await load(); await loadStatus();
   say(S.idxError ? 'Indexing failed' : 'Index rebuilt'); render();
 }
-function exportJson() {
-  const data = BOOKMARKS.map(b => ({ title: b.title, url: b.url, folder: b.folderPath, collections: b.categories, saved: b.dateAdded ? new Date(b.dateAdded).toISOString() : null, ...META[b.id] }));
+function exportHtml() {   // the standard bookmarks file every browser can import, keeping your folders; tags and summaries ride along
+  const tree = { kids: {}, items: [] };
+  BOOKMARKS.forEach(b => {
+    let node = tree;
+    (b.folderPath || '').split(' / ').filter(Boolean).forEach(p => { node = node.kids[p] ||= { kids: {}, items: [] }; });
+    node.items.push(b);
+  });
+  const secs = ms => ms ? Math.floor(ms / 1000) : '';
+  const walk = (node, pad) => Object.entries(node.kids).map(([name, k]) => `${pad}<DT><H3>${esc(name)}</H3>\n${pad}<DL><p>\n${walk(k, pad + '    ')}${pad}</DL><p>\n`).join('')
+    + node.items.map(b => { const m = META[b.id] || {}, tags = [...new Set([...(m.tags || []), ...(m.aiTags || [])])].join(',');
+      return `${pad}<DT><A HREF="${esc(b.url)}" ADD_DATE="${secs(b.dateAdded)}"${tags ? ` TAGS="${esc(tags)}"` : ''}>${esc(b.title || host(b.url))}</A>\n${m.aiSummary || m.summary ? `${pad}<DD>${esc(m.summary || m.aiSummary)}\n` : ''}`; }).join('');
+  const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n${walk(tree, '    ')}</DL><p>\n`;
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
-  a.download = 'ai-bookmarks.json'; a.click();
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  a.download = 'ai-bookmarks.html'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000); say('Bookmarks exported');
 }
 
@@ -410,7 +420,7 @@ app.addEventListener('click', async e => {
     case 'retry': S.loading = true; S.error = null; render(); await refresh(); return;
     case 'retry-search': return runSearch(S.q);
     case 'import': return IN_EXT ? chrome.tabs.create({ url: 'chrome://bookmarks' }) : refresh();
-    case 'export': return exportJson();
+    case 'export': return exportHtml();
     case 'clearask': S.confirmClear = !S.confirmClear; return render();
     case 'clearyes': { await api({ type: 'CLEAR_DATA' }); S.confirmClear = false; META = {}; say('Local data cleared'); await refresh(); return; }
   }

@@ -282,7 +282,7 @@ const settings = () => {
   const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
   const statusText = !S.hasKey ? 'Make search smarter'
     : running && !job.total ? 'Looking for new bookmarks…'
-    : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}… ${num(job.done || 0)} of ${num(job.total)}`
+    : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}…`
     : job.error ? 'Stopped before finishing'
     : caughtUp ? 'Nothing new to tag'
     : all ? 'All caught up'

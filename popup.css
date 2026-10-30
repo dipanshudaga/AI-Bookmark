@@ -334,3 +334,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .circle[aria-current="page"]:hover{background:var(--accent);color:var(--on-accent)}
 .raised.danger:hover,.sq.del:hover,.sq.raised.del:hover,.drow.bad:hover{background:var(--danger-tint);border-color:var(--danger);color:var(--danger)}
 .raised.yes:hover{background:var(--danger);border-color:var(--danger);color:#fff;filter:brightness(.9)}
+.srow.col .keyline,.srow.col .keylink{margin-left:calc(20px + var(--sp-3))}
+.keylink{font-weight:var(--fw-regular)}

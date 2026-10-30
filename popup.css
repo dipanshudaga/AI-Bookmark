@@ -328,3 +328,9 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .srow>.withicon{flex-direction:row!important;align-items:center;gap:var(--sp-3)}
 .withicon>svg{width:20px;height:20px;flex:none;color:var(--accent-text)}
 .withicon .tx{display:flex;flex-direction:column;min-width:0}
+/* hovers: purple everywhere, red only for delete */
+.raised:hover{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.sq:hover,.sq.raised:hover,.circle:hover,.row .more-btn:hover,.search .clr:hover,.drow:hover{background:var(--accent-tint);color:var(--accent-text)}
+.circle[aria-current="page"]:hover{background:var(--accent);color:var(--on-accent)}
+.raised.danger:hover,.sq.del:hover,.sq.raised.del:hover,.drow.bad:hover{background:var(--danger-tint);border-color:var(--danger);color:var(--danger)}
+.raised.yes:hover{background:var(--danger);border-color:var(--danger);color:#fff;filter:brightness(.9)}

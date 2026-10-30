@@ -174,7 +174,7 @@ const hintFooter = () => `<footer class="foot hint"><span>Use <kbd>↑</kbd> <kb
 const header = () => `<header class="hdr">
   <button class="brand" data-a="home" aria-label="AI Bookmarks, go to home"><img class="logo" src="assets/img/logo.webp" alt="" width="28" height="28">
     <span><span class="wm">AI BOOKMARKS</span><span class="sub">Personal internet archive</span></span></button>
-  <button class="circle" data-a="find" aria-label="Search" ${S.screen === 'home' || S.screen === 'results' && !S.colOnly ? 'aria-current="page"' : ''}>${ic('search')}</button>
+  ${S.screen === 'home' || S.screen === 'results' && S.q ? '' : `<button class="circle" data-a="find" aria-label="Search">${ic('search')}</button>`}
   <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('layers')}</button>
   <button class="circle" data-a="settings" aria-label="Settings" ${S.screen === 'settings' ? 'aria-current="page"' : ''}>${ic('gear')}</button></header>`;
 const searchBox = () => `<form class="cons" data-form="search" role="search"><div class="search well">${ic('search')}
@@ -302,7 +302,7 @@ const settings = () => {
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
       <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
     ${S.hasKey && !(all && !running) ? bar : ''}
-    <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
+    <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide${S.hasKey && (running || S.rebuilding) ? ' busy' : ''}" data-a="${act}" ${!n ? 'disabled' : S.hasKey && (running || S.rebuilding) ? 'aria-busy="true"' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
   </section>
   <section class="sgroup">
     <div class="srow"><span class="withicon">${ic('spark')}<span class="tx">Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
@@ -319,13 +319,18 @@ const settings = () => {
 const SCREENS = { home, results: resultsScreen, collections, details, settings };
 const app = $('#app');
 
+let dlgOpener = null;
 function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
+  const hadDlg = !!$('.dlg', app), opener = hadDlg ? null : active?.dataset?.a;
   app.dataset.screen = S.screen;
   const foot = S.screen === 'results' && S.q && shown().length ? hintFooter() : '';
   app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '') + (S.keyDialog ? keyDialog() : '');
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   checkFavicons(app);
+  const hasDlg = !!$('.dlg', app);
+  if (hasDlg && !hadDlg) dlgOpener = opener;
+  if (!hasDlg && hadDlg && dlgOpener) { $(`[data-a="${dlgOpener}"]`, app)?.focus(); dlgOpener = null; }
   $('.dlg [autofocus]', app)?.focus();
   const inp = $('input[name=q]', app);
   if (inp && (hadSearch || focusSearch)) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
@@ -427,7 +432,7 @@ app.addEventListener('click', async e => {
     case 'edit': S.editing = !S.editing; return render();
     case 'addtag': S.addTag = true; render(); return $('.tagin', app)?.focus();
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
-    case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
+    case 'tagnow': { if (tagRunning()) return; const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
     case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
     case 'keydlg': S.keyDialog = true; S.keyNote = ''; return render();
@@ -476,6 +481,10 @@ app.addEventListener('submit', async e => {
   }
 });
 app.addEventListener('keydown', e => {
+  if (e.key === 'Tab' && $('.dlg', app)) {   // keep keyboard focus inside an open dialog
+    const f = [...app.querySelectorAll('.dlg input, .dlg button, .dlg a[href]')];
+    if (f.length) { const i = f.indexOf(document.activeElement); if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); } }
+  }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('input[name=q]', app)?.focus(); return; }
   if (e.key === 'Escape') { if (S.confirm || S.confirmClear || S.keyDialog || S.editing || S.adding || S.addTag) { S.confirm = S.confirmClear = S.keyDialog = S.editing = S.adding = S.addTag = false; render(); } return; }
   if (S.screen !== 'results' || S.loading) return;

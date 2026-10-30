@@ -1,0 +1,644 @@
+// ─── AI Bookmark Search — Background Service Worker ─────────────────────────
+// Multi-Engine: Google Embeddings (text-embedding-004), Gemini Flash, Chrome Built-in AI, & Local
+
+const STORAGE_KEY = 'ai_bookmark_data';
+const EMBEDDINGS_KEY = 'ai_bookmark_embeddings';
+const API_KEY_STORAGE = 'gemini_api_key';
+const SETTINGS_KEY = 'ai_bookmark_settings';
+const OVERRIDES_KEY = 'ai_bookmark_category_overrides'; // { bookmarkId: category }
+const CUSTOM_CATS_KEY = 'ai_bookmark_custom_categories'; // [name]
+const TAGJOB_KEY = 'ai_bookmark_tagjob'; // { running, total, done, failed, error, updatedAt }
+const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // fast, can read pages through the url_context tool
+const META_KEY = 'ai_bookmark_meta'; // { bookmarkId: { tags: [], summary, lastAccessed } }
+const DEFAULT_API_KEY = 'REMOVED';
+
+// Default settings
+const DEFAULT_SETTINGS = {
+  searchEngine: 'auto', // 'auto' | 'embeddings' | 'generative' | 'local' | 'nano'
+  autoEmbedNew: true,
+};
+
+// ─── Bookmark Tree Traversal ────────────────────────────────────────────────
+function flattenBookmarks(nodes, path = '') {
+  let results = [];
+  for (const node of nodes) {
+    const currentPath = path ? `${path} / ${node.title}` : node.title;
+    if (node.url) {
+      results.push({
+        id: node.id,
+        title: node.title || '',
+        url: node.url,
+        folderPath: path,
+        dateAdded: node.dateAdded || 0,
+      });
+    }
+    if (node.children) {
+      results = results.concat(flattenBookmarks(node.children, currentPath));
+    }
+  }
+  return results;
+}
+
+// ─── Auto-Categorization Rules ──────────────────────────────────────────────
+const CATEGORY_KEYWORDS = {
+  'Design': ['design', 'figma', 'dribbble', 'behance', 'ui', 'ux', 'css', 'typography', 'font', 'color', 'palette', 'gradient', 'shader', 'icon', 'illustration', 'layout', 'motion', 'animation', 'three.js', 'webgl', '3d', 'poster', 'packaging', 'landing', 'inspiration', 'aesthetic', 'paper.design', 'pen.dev', 'threeui', 'landdding', 'recraft', 'inspora', 'recent.design', 'collectui', 'screensdesign', 'deck.gallery'],
+  'AI Tools': ['ai', 'gpt', 'llm', 'openai', 'claude', 'gemini', 'midjourney', 'stable diffusion', 'dall-e', 'image generat', 'krea', 'reve', 'meigen', 'imageory', 'quiver', 'anthropic', 'mistral', 'huggingface'],
+  'Development': ['github', 'code', 'programming', 'developer', 'react', 'javascript', 'python', 'api', 'sdk', 'npm', 'framework', 'library', 'codepen', 'markdown', 'markitdown', 'vite', 'next.js', 'typescript', 'rust', 'golang', 'docker'],
+  'Video & Media': ['video', 'youtube', 'vimeo', 'stream', 'movie', 'film', 'animation', 'stop motion', 'tavus', 'ltx', 'decart', 'cardboard', 'sound', 'audio', 'music', 'podcast', 'muesli'],
+  'AI Agents': ['agent', 'automation', 'workflow', 'manus', 'hermes', 'langchain', 'autogen', 'crew', 'browser-use', 'agentic'],
+  'Data Visualization': ['data viz', 'chart', 'graph', 'visualization', 'infographic', 'pudding', 'information is beautiful', 'ourworldindata', 'diagram', 'observable', 'd3'],
+  'Archives & Museums': ['archive', 'museum', 'collection', 'gallery', 'smithsonian', 'cooper hewitt', 'poster house', 'letterform', 'internet archive'],
+  'Productivity': ['tool', 'productivity', 'workflow', 'notion', 'note', 'calendar', 'task', 'project', 'delphi', 'ascii', 'lummi', 'grainrad', 'playgrnd', 'linear', 'raycast'],
+  'Prompts & Resources': ['prompt', 'resource', 'template', 'guide', 'tutorial', 'course', 'learn', 'skill', 'skillry', 'skills.sh', 'youmind'],
+};
+
+function categorizeBookmark(bookmark) {
+  const text = `${bookmark.title} ${bookmark.url} ${bookmark.folderPath}`.toLowerCase();
+  const categories = [];
+
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    for (const kw of keywords) {
+      if (text.includes(kw.toLowerCase())) {
+        categories.push(category);
+        break;
+      }
+    }
+  }
+
+  // Fallback: use folder path as category
+  if (categories.length === 0 && bookmark.folderPath) {
+    const folders = bookmark.folderPath.split(' / ').filter(f => f && f !== 'Bookmarks bar' && f !== 'Other bookmarks');
+    if (folders.length > 0) {
+      categories.push(folders[folders.length - 1]);
+    }
+  }
+
+  if (categories.length === 0) {
+    categories.push('Uncategorized');
+  }
+
+  return categories;
+}
+
+// ─── Index all bookmarks ────────────────────────────────────────────────────
+async function indexBookmarks() {
+  const tree = await chrome.bookmarks.getTree();
+  const flat = flattenBookmarks(tree);
+
+  const extra = await chrome.storage.local.get([OVERRIDES_KEY, META_KEY]);
+  const overrides = extra[OVERRIDES_KEY] || {};
+  const meta = extra[META_KEY] || {};
+  const indexed = flat.map(bm => {
+    const categories = overrides[bm.id] ? [overrides[bm.id]] : categorizeBookmark(bm);
+    const m = meta[bm.id] || {};
+    const tags = [...new Set([...(m.tags || []), ...(m.aiTags || [])])];
+    const summary = m.summary || m.aiSummary || '';
+    return {
+      ...bm,
+      categories,
+      tags,
+      summary,
+      searchText: `${bm.title} ${bm.url} ${bm.folderPath} ${categories.join(' ')} ${tags.join(' ')} ${summary}`.toLowerCase(),
+    };
+  });
+
+  await chrome.storage.local.set({
+    [STORAGE_KEY]: {
+      bookmarks: indexed,
+      lastIndexed: Date.now(),
+      count: indexed.length,
+    }
+  });
+
+  return indexed;
+}
+
+// ─── Format text for embedding ──────────────────────────────────────────────
+function getBookmarkEmbeddingText(bm) {
+  return `Title: ${bm.title} | Category: ${bm.categories.join(', ')} | Tags: ${(bm.tags || []).join(', ')} | About: ${bm.summary || ''} | Folder: ${bm.folderPath} | URL: ${bm.url}`;
+}
+
+// ─── Google Embeddings API (gemini-embedding-001) ───────────────────────────
+async function embedText(text, apiKey) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${apiKey}`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'models/gemini-embedding-001',
+      content: { parts: [{ text }] }
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Google Embedding error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  return data.embedding?.values || null;
+}
+
+async function batchEmbedBookmarks(bookmarks, apiKey) {
+  const stored = await chrome.storage.local.get(EMBEDDINGS_KEY);
+  const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
+
+  const missing = bookmarks.filter(b => !embeddingsMap[b.id]);
+  if (missing.length === 0) {
+    return { total: bookmarks.length, embedded: Object.keys(embeddingsMap).length };
+  }
+
+  const BATCH_SIZE = 50;
+  for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+    const batch = missing.slice(i, i + BATCH_SIZE);
+    const requests = batch.map(b => ({
+      model: 'models/gemini-embedding-001',
+      content: { parts: [{ text: getBookmarkEmbeddingText(b) }] }
+    }));
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests })
+      });
+
+      if (!response.ok) {
+        // Fallback: embed individually if batch endpoint throttles
+        for (const item of batch) {
+          try {
+            const vec = await embedText(getBookmarkEmbeddingText(item), apiKey);
+            if (vec) embeddingsMap[item.id] = vec;
+          } catch (e) {
+            console.warn(`Failed embedding bookmark ${item.id}`, e);
+          }
+        }
+      } else {
+        const data = await response.json();
+        const results = data.embeddings || [];
+        results.forEach((emb, idx) => {
+          if (emb?.values && batch[idx]) {
+            embeddingsMap[batch[idx].id] = emb.values;
+          }
+        });
+      }
+
+      // Save progressive checkpoints
+      await chrome.storage.local.set({ [EMBEDDINGS_KEY]: embeddingsMap });
+    } catch (e) {
+      console.error('Batch embedding failure:', e);
+      break;
+    }
+  }
+
+  return { total: bookmarks.length, embedded: Object.keys(embeddingsMap).length };
+}
+
+// ─── Vector Cosine Similarity ───────────────────────────────────────────────
+function cosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dot += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// ─── Semantic Search via Google Embeddings ─────────────────────────────────
+async function searchWithEmbeddings(query, bookmarks, apiKey) {
+  const queryVector = await embedText(query, apiKey);
+  if (!queryVector) throw new Error('Could not compute query embedding');
+
+  const stored = await chrome.storage.local.get(EMBEDDINGS_KEY);
+  const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
+
+  const scored = [];
+  for (const bm of bookmarks) {
+    const bmVector = embeddingsMap[bm.id];
+    let sim = 0;
+    if (bmVector) {
+      sim = cosineSimilarity(queryVector, bmVector);
+    } else {
+      // Local keyword hybrid boost if embedding missing
+      const match = bm.searchText.includes(query.toLowerCase()) ? 0.35 : 0;
+      sim = match;
+    }
+
+    if (sim > 0.38) {
+      scored.push({
+        ...bm,
+        matchScore: Math.round(sim * 100),
+        engineUsed: 'Google Embeddings'
+      });
+    }
+  }
+
+  scored.sort((a, b) => b.matchScore - a.matchScore);
+  return scored.slice(0, 20);
+}
+
+// ─── Generative AI Search (Gemini 3.8 Flash) ────────────────────────────────
+async function searchWithAI(query, bookmarks, apiKey) {
+  const sample = bookmarks.slice(0, 500);
+  const bookmarkList = sample.map((b, i) =>
+    `[${i}] "${b.title}" | ${b.url} | Tags: ${(b.tags || []).join(', ') || '-'} | About: ${b.summary || '-'} | Categories: ${b.categories.join(', ')} | Folder: ${b.folderPath}`
+  ).join('\n');
+
+  const prompt = `You are a bookmark search assistant. The user saved these bookmarks. Each line has the title, URL, tags and a short description of what the site is.
+
+${bookmarkList}
+
+The user asks: "${query}"
+
+Return a JSON array of the bookmark indices (the numbers in brackets) that best answer the question, using the tags and descriptions as well as the titles. Return at most 12, most relevant first. Only return the JSON array of numbers, nothing else.
+
+Example response: [3, 7, 12, 0]`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 256 }
+      })
+    }
+  );
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API error: ${response.status} - ${err.slice(0, 200)}`);
+  }
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+
+  const match = text.match(/\[[\d\s,]*\]/);
+  if (!match) return [];
+
+  const indices = JSON.parse(match[0]);
+  return indices
+    .filter(i => i >= 0 && i < sample.length)
+    .map((i, rank) => ({
+      ...sample[i],
+      matchScore: Math.max(70, 98 - (rank * 3)),
+      engineUsed: 'Gemini'
+    }));
+}
+
+// ─── AI tagging: Gemini reads each page and returns tags + a one-line summary ───
+const TAG_BATCH = 10;
+let tagging = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function cleanTags(tags) {
+  return [...new Set((Array.isArray(tags) ? tags : []).map(t => String(t).toLowerCase().trim().slice(0, 24)).filter(Boolean))].slice(0, 6);
+}
+
+async function tagBatch(batch, apiKey) {
+  const items = batch.map((b, i) => `[${i}] "${b.title}" | ${b.url} | folder: ${b.folderPath}`).join('\n');
+  const prompt = `You tag a person's saved web bookmarks so they are easy to find later with natural-language search.
+Read each page if you can. If a page cannot be read, infer from the title and domain.
+Return ONLY a JSON array with one object per bookmark: {"i": <index>, "tags": [3 to 6 short lowercase tags: what it is, what it is for, the topic, and synonyms someone might search for], "summary": "<one plain sentence, at most 25 words, what the site offers>"}.
+
+Bookmarks:
+${items}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ url_context: {} }], generationConfig: { temperature: 0.2 } })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
+      const m = text.match(/\[[\s\S]*\]/);
+      if (!m) throw new Error('Gemini returned no JSON');
+      return JSON.parse(m[0]);
+    }
+    if (![429, 500, 503].includes(res.status)) throw new Error(`Gemini error ${res.status}`);
+    await sleep(2000 * (attempt + 1));
+  }
+  throw new Error('Gemini is busy, try again in a minute');
+}
+
+async function writeJob(patch) {
+  const cur = (await chrome.storage.local.get(TAGJOB_KEY))[TAGJOB_KEY] || {};
+  await chrome.storage.local.set({ [TAGJOB_KEY]: { ...cur, ...patch, updatedAt: Date.now() } });
+}
+
+async function tagBookmarks({ force = false } = {}) {
+  if (tagging) return;
+  tagging = true;
+  try {
+    const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE, META_KEY]);
+    const apiKey = stored[API_KEY_STORAGE] || DEFAULT_API_KEY;
+    if (!apiKey) throw new Error('Add a Gemini API key in Settings first.');
+    const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
+    let meta = stored[META_KEY] || {};
+    const todo = bookmarks.filter(b => b.url && /^https?:/.test(b.url) && (force || !meta[b.id]?.aiAt));
+    await writeJob({ running: true, total: todo.length, done: 0, failed: 0, error: null });
+    let done = 0, failed = 0, lastError = null;
+    for (let i = 0; i < todo.length; i += TAG_BATCH) {
+      const batch = todo.slice(i, i + TAG_BATCH);
+      try {
+        const out = await tagBatch(batch, apiKey);
+        meta = (await chrome.storage.local.get(META_KEY))[META_KEY] || meta;
+        for (const o of out) {
+          const b = batch[o.i];
+          if (!b) continue;
+          meta[b.id] = { ...(meta[b.id] || {}), aiTags: cleanTags(o.tags), aiSummary: String(o.summary || '').slice(0, 220), aiAt: Date.now() };
+        }
+        await chrome.storage.local.set({ [META_KEY]: meta });
+        done += batch.length;
+      } catch (e) {
+        failed += batch.length; lastError = e.message;
+        if (/API key|403|401/.test(e.message)) break;
+      }
+      await writeJob({ done, failed, error: lastError });
+    }
+    // bake the new tags into the search index and rebuild embeddings so meaning search sees them
+    const reindexed = await indexBookmarks();
+    if (done > 0) {
+      await chrome.storage.local.remove(EMBEDDINGS_KEY);
+      batchEmbedBookmarks(reindexed, apiKey).catch(e => console.warn('Re-embed after tagging failed:', e));
+    }
+    await writeJob({ running: false, done, failed, error: lastError });
+  } catch (e) {
+    await writeJob({ running: false, error: e.message });
+  } finally {
+    tagging = false;
+  }
+}
+
+// ─── Local Keyword & Semantic Heuristic Search ──────────────────────────────
+function searchLocal(query, bookmarks) {
+  const clean = query.toLowerCase().trim();
+  const terms = clean.split(/\s+/).filter(t => t.length > 1);
+  if (terms.length === 0) return bookmarks.slice(0, 20);
+
+  const scored = bookmarks.map(bm => {
+    let score = 0;
+    const titleLower = bm.title.toLowerCase();
+    const urlLower = bm.url.toLowerCase();
+
+    // Exact phrase match
+    if (titleLower.includes(clean)) score += 15;
+    if (urlLower.includes(clean)) score += 8;
+
+    for (const term of terms) {
+      if (titleLower.includes(term)) score += 5;
+      if (urlLower.includes(term)) score += 3;
+      for (const cat of bm.categories) {
+        if (cat.toLowerCase().includes(term)) score += 6;
+      }
+      if (bm.folderPath.toLowerCase().includes(term)) score += 4;
+      if ((bm.tags || []).some(t => t.includes(term))) score += 7;
+      if ((bm.summary || '').toLowerCase().includes(term)) score += 2;
+    }
+
+    return {
+      ...bm,
+      score,
+      matchScore: Math.min(96, Math.max(50, 45 + score * 3)),
+      engineUsed: 'Local Match'
+    };
+  });
+
+  return scored
+    .filter(b => b.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 20);
+}
+
+// ─── Message Handler ────────────────────────────────────────────────────────
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  (async () => {
+    try {
+      if (msg.type === 'INDEX') {
+        const bookmarks = await indexBookmarks();
+        sendResponse({ success: true, count: bookmarks.length });
+      }
+
+      else if (msg.type === 'SEARCH') {
+        const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE, EMBEDDINGS_KEY, SETTINGS_KEY]);
+        let bookmarks = stored[STORAGE_KEY]?.bookmarks;
+
+        if (!bookmarks || !bookmarks.length) {
+          bookmarks = await indexBookmarks();
+        }
+
+        const apiKey = stored[API_KEY_STORAGE] || DEFAULT_API_KEY;
+        const embeddingsMap = stored[EMBEDDINGS_KEY] || {};
+        const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
+        const requestedEngine = msg.engine || settings.searchEngine || 'auto';
+
+        let results = [];
+        let engineUsed = 'Local';
+
+        // 1. Google Embeddings Mode
+        if ((requestedEngine === 'embeddings' || (requestedEngine === 'auto' && Object.keys(embeddingsMap).length > 5)) && apiKey) {
+          try {
+            results = await searchWithEmbeddings(msg.query, bookmarks, apiKey);
+            engineUsed = 'Google Embeddings';
+          } catch (e) {
+            console.warn('Embeddings search failed, trying Generative fallback:', e);
+          }
+        }
+
+        // 2. Generative Gemini Mode
+        if (results.length === 0 && (requestedEngine === 'generative' || (requestedEngine === 'auto' && apiKey)) && apiKey) {
+          try {
+            results = await searchWithAI(msg.query, bookmarks, apiKey);
+            engineUsed = 'Gemini Flash';
+          } catch (e) {
+            console.warn('Generative AI search failed, falling back to local:', e);
+          }
+        }
+
+        // 3. Fallback to Local Search
+        if (results.length === 0) {
+          results = searchLocal(msg.query, bookmarks);
+          engineUsed = 'Local';
+        }
+
+        sendResponse({ success: true, results, engineUsed });
+      }
+
+      else if (msg.type === 'GENERATE_EMBEDDINGS') {
+        const stored = await chrome.storage.local.get([STORAGE_KEY, API_KEY_STORAGE]);
+        const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
+        const apiKey = stored[API_KEY_STORAGE] || DEFAULT_API_KEY;
+
+        if (!apiKey) {
+          throw new Error('Please set a Gemini API key first to generate embeddings.');
+        }
+
+        const status = await batchEmbedBookmarks(bookmarks, apiKey);
+        sendResponse({ success: true, status });
+      }
+
+      else if (msg.type === 'GET_EMBEDDINGS_STATUS') {
+        const stored = await chrome.storage.local.get([STORAGE_KEY, EMBEDDINGS_KEY]);
+        const total = stored[STORAGE_KEY]?.bookmarks?.length || 0;
+        const embedded = Object.keys(stored[EMBEDDINGS_KEY] || {}).length;
+        sendResponse({ success: true, total, embedded });
+      }
+
+      else if (msg.type === 'GET_CATEGORIES') {
+        const stored = await chrome.storage.local.get(STORAGE_KEY);
+        let bookmarks = stored[STORAGE_KEY]?.bookmarks;
+
+        if (!bookmarks || !bookmarks.length) {
+          bookmarks = await indexBookmarks();
+        }
+
+        const categoryMap = {};
+        for (const bm of bookmarks) {
+          for (const cat of bm.categories) {
+            if (!categoryMap[cat]) categoryMap[cat] = [];
+            categoryMap[cat].push(bm);
+          }
+        }
+
+        const custom = (await chrome.storage.local.get(CUSTOM_CATS_KEY))[CUSTOM_CATS_KEY] || [];
+        for (const name of custom) if (!categoryMap[name]) categoryMap[name] = [];
+
+        sendResponse({ success: true, categories: categoryMap, count: bookmarks.length });
+      }
+
+      else if (msg.type === 'SET_CATEGORY') {
+        const stored = await chrome.storage.local.get(OVERRIDES_KEY);
+        const overrides = stored[OVERRIDES_KEY] || {};
+        overrides[msg.id] = msg.category;
+        await chrome.storage.local.set({ [OVERRIDES_KEY]: overrides });
+        await indexBookmarks();
+        sendResponse({ success: true });
+      }
+
+      else if (msg.type === 'START_TAGGING') {
+        tagBookmarks({ force: !!msg.force });   // runs in the background; the popup polls GET_TAG_STATUS
+        sendResponse({ success: true });
+      }
+
+      else if (msg.type === 'GET_TAG_STATUS') {
+        const stored = await chrome.storage.local.get([TAGJOB_KEY, META_KEY, STORAGE_KEY]);
+        const meta = stored[META_KEY] || {};
+        const total = stored[STORAGE_KEY]?.bookmarks?.length || 0;
+        const tagged = Object.values(meta).filter(m => m.aiAt).length;
+        sendResponse({ success: true, job: stored[TAGJOB_KEY] || {}, tagged, total });
+      }
+
+      else if (msg.type === 'GET_META') {
+        const stored = await chrome.storage.local.get(META_KEY);
+        sendResponse({ success: true, meta: stored[META_KEY] || {} });
+      }
+
+      else if (msg.type === 'SET_META') {
+        const stored = await chrome.storage.local.get(META_KEY);
+        const meta = stored[META_KEY] || {};
+        meta[msg.id] = { ...(meta[msg.id] || {}), ...msg.patch };
+        await chrome.storage.local.set({ [META_KEY]: meta });
+        sendResponse({ success: true });
+      }
+
+      else if (msg.type === 'CLEAR_DATA') {
+        // Local index, embeddings, category overrides, custom categories and bookmark notes. Chrome bookmarks, settings and API key are untouched.
+        await chrome.storage.local.remove([STORAGE_KEY, EMBEDDINGS_KEY, OVERRIDES_KEY, CUSTOM_CATS_KEY, META_KEY, TAGJOB_KEY]);
+        await indexBookmarks();
+        sendResponse({ success: true });
+      }
+
+      else if (msg.type === 'ADD_CATEGORY') {
+        const name = String(msg.name || '').trim().slice(0, 28);
+        if (!name) throw new Error('Category name is empty.');
+        const stored = await chrome.storage.local.get(CUSTOM_CATS_KEY);
+        const custom = stored[CUSTOM_CATS_KEY] || [];
+        if (!custom.includes(name)) custom.push(name);
+        await chrome.storage.local.set({ [CUSTOM_CATS_KEY]: custom });
+        sendResponse({ success: true });
+      }
+
+      else if (msg.type === 'SAVE_API_KEY') {
+        await chrome.storage.local.set({ [API_KEY_STORAGE]: msg.apiKey.trim() });
+        sendResponse({ success: true });
+      }
+
+      else if (msg.type === 'GET_API_KEY') {
+        const stored = await chrome.storage.local.get(API_KEY_STORAGE);
+        sendResponse({ success: true, apiKey: stored[API_KEY_STORAGE] || DEFAULT_API_KEY });
+      }
+
+      else if (msg.type === 'GET_SETTINGS') {
+        const stored = await chrome.storage.local.get(SETTINGS_KEY);
+        sendResponse({ success: true, settings: stored[SETTINGS_KEY] || DEFAULT_SETTINGS });
+      }
+
+      else if (msg.type === 'SAVE_SETTINGS') {
+        await chrome.storage.local.set({ [SETTINGS_KEY]: msg.settings });
+        sendResponse({ success: true });
+      }
+
+    } catch (err) {
+      sendResponse({ success: false, error: err.message });
+    }
+  })();
+  return true; // keep channel open for async response
+});
+
+// ─── Auto-index on install ──────────────────────────────────────────────────
+chrome.runtime.onInstalled.addListener(() => {
+  indexBookmarks();
+});
+
+// ─── Auto-re-index on ANY bookmark change ───────────────────────────────────
+let reindexTimer = null;
+
+function debouncedReindex(reason) {
+  if (reindexTimer) clearTimeout(reindexTimer);
+  reindexTimer = setTimeout(async () => {
+    console.log(`[AI Bookmarks] Re-indexing: ${reason}`);
+    const bookmarks = await indexBookmarks();
+    console.log(`[AI Bookmarks] Indexed ${bookmarks.length} bookmarks`);
+
+    // Optionally auto-embed newly created bookmark
+    const stored = await chrome.storage.local.get([API_KEY_STORAGE, SETTINGS_KEY, EMBEDDINGS_KEY]);
+    const apiKey = stored[API_KEY_STORAGE];
+    const settings = stored[SETTINGS_KEY] || DEFAULT_SETTINGS;
+    const meta = (await chrome.storage.local.get(META_KEY))[META_KEY] || {};
+    const hasTagged = Object.values(meta).some(m => m.aiAt);
+    if ((apiKey || DEFAULT_API_KEY) && settings.autoTagNew !== false && hasTagged) {
+      await tagBookmarks();   // only bookmarks without AI tags yet, so new saves
+    } else if (apiKey && settings.autoEmbedNew) {
+      batchEmbedBookmarks(bookmarks, apiKey).catch(e => console.warn('Background auto-embed error:', e));
+    }
+    reindexTimer = null;
+  }, 2000);
+}
+
+chrome.bookmarks.onCreated.addListener((id, bookmark) => {
+  debouncedReindex(`Bookmark added: "${bookmark.title || bookmark.url}"`);
+});
+
+chrome.bookmarks.onRemoved.addListener((id, removeInfo) => {
+  debouncedReindex(`Bookmark removed (id: ${id})`);
+});
+
+chrome.bookmarks.onMoved.addListener((id, moveInfo) => {
+  debouncedReindex(`Bookmark moved (id: ${id})`);
+});
+
+chrome.bookmarks.onChanged.addListener((id, changeInfo) => {
+  debouncedReindex(`Bookmark changed: "${changeInfo.title || changeInfo.url}"`);
+});
+
+chrome.bookmarks.onImportEnded.addListener(() => {
+  debouncedReindex('Bookmark import completed');
+});

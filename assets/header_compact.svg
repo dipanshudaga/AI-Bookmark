@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 52" width="440" height="52" fill="none">
+  <defs>
+    <path id="archCompact" d="M 90 40 Q 220 16 350 40" fill="none"/>
+    <linearGradient id="violetGradComp" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#5426D6"/>
+      <stop offset="100%" stop-color="#38108A"/>
+    </linearGradient>
+  </defs>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Righteous&amp;display=swap');
+    .comp-wordmark {
+      font-family: 'Righteous', 'Arial Black', Impact, sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      fill: url(#violetGradComp);
+      letter-spacing: -0.02em;
+    }
+    .comp-offset {
+      font-family: 'Righteous', 'Arial Black', Impact, sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      fill: #D9F76A;
+      letter-spacing: -0.02em;
+      opacity: 0.9;
+    }
+  </style>
+
+  <rect width="440" height="52" fill="#FBF8F0"/>
+
+  <!-- Top Right Subtle Waves -->
+  <path d="M 320 0 C 350 14, 385 16, 415 8 L 440 18 L 440 0 Z" fill="#D9F76A"/>
+  <path d="M 360 0 C 385 16, 415 18, 440 8 L 440 45 C 430 40, 422 28, 405 32 C 390 35, 380 48, 365 44 C 352 40, 350 26, 335 16 C 330 10, 345 2, 360 0 Z" fill="#5426D6"/>
+
+  <!-- Top Left Subtle Waves -->
+  <path d="M 0 0 L 60 0 C 50 10, 38 12, 26 8 C 16 4, 8 14, 0 20 Z" fill="#D9F76A" opacity="0.85"/>
+  <path d="M 0 0 L 26 0 C 22 10, 12 16, 0 18 Z" fill="#5426D6"/>
+
+  <!-- Compact Wordmark -->
+  <g transform="translate(0, -4) scale(1, 1.15)">
+    <text dy="-1">
+      <textPath href="#archCompact" startOffset="50%" text-anchor="middle" class="comp-offset">
+        AI BOOKMARKS
+      </textPath>
+    </text>
+    <text dy="0">
+      <textPath href="#archCompact" startOffset="50%" text-anchor="middle" class="comp-wordmark">
+        AI BOOKMARKS
+      </textPath>
+    </text>
+  </g>
+</svg>

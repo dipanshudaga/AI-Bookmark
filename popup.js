@@ -288,7 +288,8 @@ const settings = () => {
     : all ? 'All caught up'
     : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
-  const bar = `<div class="bar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>`;
+  const cnt = running && job.total ? `${num(job.done || 0)} of ${num(job.total)}` : (!all && tagged ? `${num(tagged)} of ${num(n)} tagged` : '');
+  const bar = `<div class="fbar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>${cnt ? `<div class="fkeys"><span class="fl">${cnt}</span></div>` : ''}`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">

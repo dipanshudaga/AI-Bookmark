@@ -290,3 +290,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .hero .wide{width:100%}
 .ob{gap:var(--sp-3)}.ob h3+p{margin-top:calc(var(--sp-2) * -1)}.ob .keylink{margin-top:calc(var(--sp-1) * -1)}
 .hero{gap:var(--sp-3)}.hero-l{gap:var(--sp-1)}.hst{font-weight:var(--fw-medium)}.fkeys{margin-top:calc(var(--sp-1) * -1)}
+.fbar>i{background:var(--accent)}.fbar.done>i{background:var(--lime)}.fbar i+i{border-left:0}

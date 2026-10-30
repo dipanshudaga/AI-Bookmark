@@ -177,7 +177,7 @@ const header = () => `<header class="hdr">
   <button class="circle" data-a="find" aria-label="Search" ${S.screen === 'home' || S.screen === 'results' && !S.colOnly ? 'aria-current="page"' : ''}>${ic('search')}</button>
   <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('layers')}</button>
   <button class="circle" data-a="settings" aria-label="Settings" ${S.screen === 'settings' ? 'aria-current="page"' : ''}>${ic('gear')}</button></header>`;
-const searchBox = () => `<form class="cons" data-form="search" role="search"><div class="search well">${ic('search')}
+const searchBox = () => `<div class="ttl"><h2>Search</h2></div><form class="cons" data-form="search" role="search"><div class="search well">${ic('search')}
   <input type="text" name="q" value="${esc(S.draft)}" placeholder="Search your bookmarks..." aria-label="Search your bookmarks" autocomplete="off" spellcheck="false">
   <button type="button" class="clr raised" data-a="clear" aria-label="Clear search" ${S.draft ? '' : 'hidden'}>${ic('x')}</button></div></form>`;
 const rowTags = b => {

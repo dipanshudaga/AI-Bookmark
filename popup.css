@@ -293,13 +293,4 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .fbar>i{background:var(--accent)}.fbar.done>i{background:var(--lime)}.fbar i+i{border-left:0}
 .fbar{position:relative;height:20px}
 .fmeta{justify-content:space-between;flex-wrap:nowrap;font-family:var(--font-mono)}
-.cat{position:absolute;top:0;right:0;bottom:0;overflow:hidden;color:var(--ink);transition:left .4s}
-.cat-in{position:absolute;top:2px;left:0;animation:catrun 3s linear infinite alternate}
-.cat-svg{display:block;animation:catflip 6s steps(1) infinite}
-.cat .lg1{transform-origin:17.5px 10.5px;animation:catleg .28s ease-in-out infinite alternate}
-.cat .lg2{transform-origin:8px 10.5px;animation:catleg .28s ease-in-out infinite alternate-reverse}
-@keyframes catrun{from{left:2px}to{left:calc(100% - 30px)}}
-@keyframes catflip{0%{transform:scaleX(1)}50%{transform:scaleX(-1)}}
-@keyframes catleg{from{transform:rotate(-35deg)}to{transform:rotate(35deg)}}
-@media (prefers-reduced-motion:reduce){.cat-in,.cat-svg,.cat .lg1,.cat .lg2{animation:none}}
-.fbar{height:28px;border-radius:6px}.cat-in{top:6px}
+.fbar{height:28px;border-radius:6px}

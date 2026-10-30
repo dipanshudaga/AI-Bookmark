@@ -91,7 +91,10 @@ function pollTags() {
     const tg = await api({ type: 'GET_TAG_STATUS' });
     if (tg.success) S.tag = tg;
     const mm = await api({ type: 'GET_META' }); if (mm.success) META = mm.meta || META;   // so the filing bar fills as bookmarks are tagged
-    if (!tagRunning()) { clearInterval(S.tagTimer); await load(); await loadStatus(); say('Organising finished'); }
+    if (!tagRunning()) {
+      clearInterval(S.tagTimer); await load(); await loadStatus(); say('Organising finished');
+      try { const prev = Number(localStorage.getItem('last_n')) || BOOKMARKS.length; S.checkNew = Math.max(0, BOOKMARKS.length - prev); localStorage.setItem('last_n', String(BOOKMARKS.length)); } catch { S.checkNew = 0; }   // so a check can say how many new bookmarks it picked up
+    }
     render();
   }, 2000);
 }
@@ -284,7 +287,7 @@ const settings = () => {
     : running && !job.total ? 'Looking for new bookmarks…'
     : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}…`
     : job.error ? 'Stopped before finishing'
-    : caughtUp ? 'Nothing new to tag'
+    : caughtUp ? (S.checkNew ? `${num(S.checkNew)} new ${S.checkNew === 1 ? 'bookmark' : 'bookmarks'} tagged` : 'Nothing new to tag')
     : all ? 'All caught up'
     : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
@@ -296,7 +299,7 @@ const settings = () => {
   <section class="hero">
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
       <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
-    ${S.hasKey ? bar : ''}
+    ${S.hasKey && !(all && !running) ? bar : ''}
     <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
   </section>
   <section class="sgroup">

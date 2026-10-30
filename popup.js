@@ -174,7 +174,7 @@ const hintFooter = () => `<footer class="foot hint"><span>Use <kbd>↑</kbd> <kb
 const header = () => `<header class="hdr">
   <button class="brand" data-a="home" aria-label="AI Bookmarks, go to home"><img class="logo" src="assets/img/logo.webp" alt="" width="28" height="28">
     <span><span class="wm">AI BOOKMARKS</span><span class="sub">Personal internet archive</span></span></button>
-  ${S.screen === 'home' || S.screen === 'results' && S.q ? '' : `<button class="circle" data-a="find" aria-label="Search">${ic('search')}</button>`}
+  <button class="circle" data-a="find" aria-label="Search" ${S.screen === 'home' || S.screen === 'results' && !S.colOnly ? 'aria-current="page"' : ''}>${ic('search')}</button>
   <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('layers')}</button>
   <button class="circle" data-a="settings" aria-label="Settings" ${S.screen === 'settings' ? 'aria-current="page"' : ''}>${ic('gear')}</button></header>`;
 const searchBox = () => `<form class="cons" data-form="search" role="search"><div class="search well">${ic('search')}

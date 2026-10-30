@@ -1,103 +1,125 @@
+<p align="center">
+  <img src="store/promo-marquee-1400x560.png" alt="AI Bookmark: stop digging through your bookmarks. Just search smart with AI." width="100%">
+</p>
+
 # AI Bookmark
 
-Stop digging through your bookmarks. Just search smart with AI. AI Bookmark uses Gemini to read the pages you save, so you can search by what a page is about, not only its title.
+**Stop digging through your bookmarks. Just search smart with AI.**
 
-It works in Chrome and in other Chromium browsers, for example Brave. It needs version 116 or later.
+You save many pages. After some time, you cannot find them. You nest your folders. You sort some of them, not all. You remember what a page was about. You do not remember its title or its folder.
 
-## What it does
+AI Bookmark is a Chrome extension for this problem. Gemini reads the pages you save. Then you search by what a page is about. Type "design inspiration". The extension shows the sites that fit. It does this when those words are not in the title.
 
-- **Search by meaning.** Type a question or a few words. The extension compares the meaning, not only the exact words.
-- **Index with Gemini.** Gemini reads each bookmark. It adds tags, a short summary and a collection.
-- **Collections.** The extension groups your bookmarks, for example Design, AI Tools and Development. A bookmark that fits no group goes to Others.
-- **Link details.** Open a bookmark to see its summary, collection and tags. Tap a row to change it. If Gemini cannot read a page, the summary says so. It does not guess.
-- **Side panel.** The panel stays open when you change tabs.
-- **Local first.** Your index stays on your device. Only the Gemini steps use the network.
+<p align="center">
+  <img src="store/screenshot-3-search.png" alt="Searching for design inspiration" width="70%">
+</p>
 
 ## Install
 
-You do not need a build step.
+The extension is not in the Chrome Web Store yet. Until it is, install it by hand. You do not need a build step.
 
 1. Download or clone this repository.
-2. Open `chrome://extensions`. In Brave, open `brave://extensions`.
-3. Turn on **Developer mode**.
-4. Click **Load unpacked**.
-5. Select the repository folder.
-6. Click the puzzle-piece icon. Pin **AI Bookmark**.
+2. Open the extensions page of your browser (`chrome://extensions`).
+3. Set **Developer mode** to on.
+4. Click **Load unpacked**. Select the repository folder.
+5. Open the puzzle-piece menu. Pin **AI Bookmark**.
+
+You need a Chromium browser, version 116 or later.
 
 ## First run
 
-1. Click the extension icon. The side panel opens.
+1. Click the icon. The side panel opens.
 2. Search for a word. Keyword search works at once, with no key.
-3. For meaning search, get a free key from [Google AI Studio](https://aistudio.google.com/apikey).
+3. For search by meaning, create a free key in [Google AI Studio](https://aistudio.google.com/apikey).
 4. Paste the key into the card on the Home screen. Click **Save**. Indexing starts at once.
-5. Watch the progress on the Home card. Open Settings for the same view.
+5. Read the progress on the Home card or in Settings. You can close the panel. Indexing continues in the background.
 
-You can close the panel while the extension indexes. The work continues in the background.
+<p align="center">
+  <img src="store/screenshot-1-add-a-key.png" alt="Adding a Gemini key" width="49%">
+  <img src="store/screenshot-2-indexing.png" alt="Indexing in the background" width="49%">
+</p>
 
 ## Use
 
-| Task | How |
+| Task | Action |
 | --- | --- |
-| Open the panel | Click the icon. Or press `Ctrl+Shift+K` (`Cmd+Shift+K` on Mac). |
+| Open the panel | Click the icon. Or press `Ctrl+Shift+K` (`Cmd+Shift+K` on a Mac). |
 | Search | Type in the search box. Press `Enter`. |
-| Move in results | Press the up or down arrow. Press `Enter` to open a link. |
-| Copy a link | Select a result. Press `Cmd+C` or `Ctrl+C`. |
-| See your collections | Click the layers icon. |
-| Index new bookmarks | The extension does it by itself. If you turn that off in Settings, Settings shows how many new bookmarks it found. Click **Sync now**. |
-| Export your bookmarks | Open Settings. Click **Export bookmarks**. The file is an HTML bookmarks file. |
-| Change a summary, collection or tags | Open the bookmark. Tap the row you want to change. |
-| Delete a bookmark | Open its details. Click the bin icon. Click **Undo** within seven seconds to restore it. |
+| Move in the results | Press the up or down arrow. Press `Enter` to open a link. |
+| Copy a link | Select a result. Press `Ctrl+C` or `Cmd+C`. |
+| Browse by collection | Click the layers icon. |
+| Change a summary, a collection or the tags | Open a bookmark. Tap the row. |
+| Delete a bookmark | Open it. Click the bin icon. Click **Undo** within seven seconds to restore it. |
+| Index new bookmarks | The extension does this by itself. You can switch it off in Settings. Then Settings shows how many new bookmarks it found. Click **Sync now**. |
+| Export | Open Settings. Click **Export bookmarks**. |
+| Clear the index | Open Settings. Click **Clear the index**. Your bookmarks stay. |
+
+<p align="center">
+  <img src="store/screenshot-4-collections.png" alt="Collections that the extension builds" width="49%">
+  <img src="store/screenshot-5-details.png" alt="A bookmark with its summary, collection and tags" width="49%">
+</p>
+
+## How it works
+
+1. **Index.** Gemini reads each page. It writes a summary, tags and a collection. The extension then makes a numeric search index from the title, the tags and the summary.
+2. **Search.** The extension first matches your query against the data on your device. A result shows at once. In parallel, it compares the meaning of your query with the index. Then it updates the list.
+3. **Pages it cannot read.** Some pages are web apps with no text, or they need a login. For these pages the extension stores no summary. It does not guess.
+4. **Local data.** The index stays in your browser. Without a key, the extension sends nothing. Keyword search and the automatic collections still work.
 
 ## Privacy
 
-The extension has no server of its own. It has no analytics.
+The extension has no server, no analytics and no advertising. The index and the API key stay in your browser.
 
 When you use Gemini, the extension sends this data to Google:
 
-- the title, address and folder name of each bookmark
-- your search text, including what you type before you press Enter
-- the tags and summary Gemini made, to build the search index
+- The title, the address and the folder of each bookmark. Gemini also reads the page.
+- The tags and the summary that Gemini wrote. They build the search index.
+- Your search text. This includes the text you type before you press `Enter`.
 
-Gemini can also read the pages at your bookmark addresses.
-
-Your API key stays in your browser. The extension sends it only to Google. Read [PRIVACY.md](PRIVACY.md) for the full policy.
+You can switch off automatic indexing. Then the extension sends no new bookmark until you click **Sync now**. Read [PRIVACY.md](PRIVACY.md) for the full policy.
 
 ## Permissions
 
 | Permission | Reason |
 | --- | --- |
-| `bookmarks` | Read your bookmarks. Restore one after you delete it. |
-| `storage` and `unlimitedStorage` | Keep the index on your device. |
+| `bookmarks` | Read your bookmarks. Restore a bookmark after you delete it. |
+| `storage`, `unlimitedStorage` | Keep the index on your device. |
 | `sidePanel` | Show the side panel. |
-| `favicon` | Show the site icon next to each bookmark. |
-| `generativelanguage.googleapis.com` | Call the Gemini API. |
+| `favicon` | Show the icon of each site. |
+| `generativelanguage.googleapis.com` | Call the Gemini API. The extension calls no other address. |
+
+## Limits
+
+- Search by meaning needs a Gemini key. The free tier has rate limits. A large library can need several minutes to index.
+- A page that needs a login, or that builds its content with scripts, often cannot be read. It gets a title and a collection. It gets no summary.
+- Each browser profile keeps its own index. The index does not sync between devices.
 
 ## Project files
 
 ```
 ├── manifest.json          # Extension settings
-├── background.js          # Indexes, searches and calls Gemini
+├── background.js          # Indexing, search and the Gemini calls
 ├── popup.html             # Side panel page
-├── popup.js               # Side panel logic
-├── popup.css              # Side panel styles and design tokens
+├── popup.js               # Side panel interface
+├── popup.css              # Styles and design tokens
 ├── assets/                # Pictures and collection badges
 ├── fonts/                 # Inter, Space Grotesk, JetBrains Mono
 ├── icons/                 # Extension icons
 ├── store/                 # Store screenshots and promo images
 ├── DESIGN.md              # Design rules
 ├── PRIVACY.md             # Privacy policy
-├── CHROME_WEB_STORE.md    # Everything needed for the store page
+├── CHROME_WEB_STORE.md    # Text and steps for the store listing
 └── LICENSE                # MIT
 ```
 
 ## Develop
 
-There are no dependencies. Edit a file. Open the extensions page. Click the reload icon on the extension card.
+The project has no dependencies. Edit a file. Open the extensions page. Click the reload icon on the extension card.
 
-To test as a new user, uninstall the extension and load it again. The browser deletes its saved data.
+To test as a new user, uninstall the extension. Install it again. The browser deletes the saved data.
 
-Follow `DESIGN.md` for all interface work. Use the size, space and colour tokens at the top of `popup.css`.
+Follow [DESIGN.md](DESIGN.md) for interface work. Use the tokens at the top of `popup.css`.
 
 ## Licence
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).

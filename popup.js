@@ -288,26 +288,14 @@ const settings = () => {
     : all ? 'All caught up'
     : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
-  // the filing bar: one segment per collection; hatched = not tagged yet
-  const tally = {};
-  BOOKMARKS.forEach(b => { const c = S.hasKey ? META[b.id]?.aiCategory : (b.categories?.[0] || 'Others'); if (c) tally[c] = (tally[c] || 0) + 1; });
-  const filed = Object.values(tally).reduce((s, v) => s + v, 0);
-  const top = Object.entries(tally).filter(([c]) => c !== 'Others').sort((x, y) => y[1] - x[1]).slice(0, 4);
-  const PAL = ['var(--accent)', 'var(--lime)', '#8d82d8', '#1e1a3a'];
-  const rest = filed - top.reduce((s, [, v]) => s + v, 0);
-  const pctOf = v => n ? (v / n * 100).toFixed(2) : 0;
-  const segs = [...top.map(([c, v], i) => ({ c, v, bg: PAL[i] })), ...(rest ? [{ c: 'Others', v: rest, bg: 'var(--accent-tint)' }] : [])];
-  const bar = `<div class="fbar" role="img" aria-label="${esc(statusText)}">${segs.map(s => `<i style="width:${pctOf(s.v)}%;background:${s.bg}" title="${esc(s.c)} ${s.v}"></i>`).join('')}${n - filed > 0 ? `<i class="hatch" style="width:${pctOf(n - filed)}%"></i>` : ''}</div>`;
-  const legend = !running && n - filed > 0 ? `${num(filed)} of ${num(n)} tagged` : '';
-  const keys = segs.map(s => `<span><b style="background:${s.bg}"></b>${esc(s.c)} ${num(s.v)}</span>`).join('');
+  const bar = `<div class="bar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
       <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
-    ${S.hasKey ? `${bar}
-    <div class="fkeys">${legend ? `<span class="fl">${esc(legend)}</span>` : ''}${keys}</div>` : ''}
+    ${S.hasKey ? bar : ''}
     <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
   </section>
   <section class="sgroup">

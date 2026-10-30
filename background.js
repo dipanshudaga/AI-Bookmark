@@ -363,8 +363,10 @@ async function tagBookmarks({ force = false } = {}) {
     let done = 0, failed = 0, lastError = null;
     for (let i = 0; i < todo.length; i += TAG_BATCH) {
       const batch = todo.slice(i, i + TAG_BATCH);
+      const liveKey = (await chrome.storage.local.get(API_KEY_STORAGE))[API_KEY_STORAGE];
+      if (!liveKey) { lastError = 'Gemini key removed'; break; }   // the key was deleted mid-run: stop cleanly
       try {
-        const out = await tagBatch(batch, apiKey);
+        const out = await tagBatch(batch, liveKey);
         meta = (await chrome.storage.local.get(META_KEY))[META_KEY] || meta;
         for (const o of out) {
           const b = batch[o.i];
@@ -381,7 +383,7 @@ async function tagBookmarks({ force = false } = {}) {
     }
     // bake the new tags into the search index and rebuild embeddings so meaning search sees them
     const reindexed = await indexBookmarks();
-    if (done > 0) {
+    if (done > 0 && (await chrome.storage.local.get(API_KEY_STORAGE))[API_KEY_STORAGE]) {
       await chrome.storage.local.remove(EMBEDDINGS_KEY);
       batchEmbedBookmarks(reindexed, apiKey).catch(e => console.warn('Re-embed after tagging failed:', e));
     }

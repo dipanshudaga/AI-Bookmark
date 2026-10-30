@@ -295,7 +295,7 @@ const settings = () => {
   const cells = 20, filled = n ? Math.floor(tagged / n * cells) : 0;   // twenty boxes, each a twentieth of your bookmarks
   const mosaic = `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd"' : ''}></i>`).join('')}</div>`;
   const bar = `${mosaic}<div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
-  const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
+  const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = S.hasKey && (running || S.rebuilding) || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
@@ -338,6 +338,7 @@ const clearDialog = () => `<div class="scrim" data-a="clearask"><div class="dlg"
 const keyDialog = () => `<div class="scrim" data-a="keycancel"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="kt">
   <h3 id="kt">Gemini API key</h3>
   <p>${S.hasKey ? `Connected: <span class="keymask">••••••••••••${esc(S.keyTail)}</span>` : 'Add a free key so Gemini can tag and categorise your bookmarks.'}</p>
+  ${S.hasKey && tagRunning() ? '<p class="warn">Tagging is running. Removing the key stops it. Bookmarks already tagged stay tagged.</p>' : ''}
   <form data-form="key" class="kform"><input class="well" type="password" name="k" placeholder="${S.hasKey ? 'Paste a new key to replace it' : 'Paste your Gemini key'}" aria-label="Gemini API key" autocomplete="off" autofocus>
   ${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}
   <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a>
@@ -431,7 +432,7 @@ app.addEventListener('click', async e => {
     case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
     case 'keydlg': S.keyDialog = true; S.keyNote = ''; return render();
     case 'keycancel': S.keyDialog = false; return render();
-    case 'keyremove': await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyDialog = false; say('Key removed'); return render();
+    case 'keyremove': { const wasRunning = tagRunning(); await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyDialog = false; if (S.tag?.job) S.tag.job.running = false; say('Key removed'); toast(wasRunning ? 'Key removed. Tagging stopped.' : 'Key removed'); return; }
     case 'keyfocus': S.keyDialog = true; S.keyNote = ''; return render();
     case 'obskip': try { localStorage.setItem('ob_skip', '1'); } catch { /* storage unavailable */ } return render();
     case 'moreopen': S.moreOpen = !S.moreOpen; S.confirmClear = false; return render();

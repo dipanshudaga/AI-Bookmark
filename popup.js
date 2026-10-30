@@ -277,7 +277,7 @@ const settings = () => {
   const done = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 0;
   const tagPct = running && job.total ? done((job.done || 0) + (job.failed || 0), job.total) : done(tagged, n);
   const all = n && tagged >= n;
-  const pct = tagPct;
+  const pct = n ? Math.min(100, Math.round(tagged / n * 100)) : 0;   // always out of every bookmark, not just this run's remainder
   const fresh = tagged > 0 && job.total > 0 && job.total < n;
   const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
   const statusText = !S.hasKey ? 'Make search smarter'
@@ -288,8 +288,9 @@ const settings = () => {
     : all ? 'All caught up'
     : tagged ? `${num(tagged)} of ${num(n)} tagged` : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
-  const cnt = running && job.total ? `${num(job.done || 0)} of ${num(job.total)}` : (!all && tagged ? `${num(tagged)} of ${num(n)} tagged` : '');
-  const bar = `<div class="fbar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>${cnt ? `<div class="fkeys"><span class="fl">${cnt}</span></div>` : ''}`;
+  const cnt = !all && (running || tagged) ? `${num(tagged)} of ${num(n)}${running ? '' : ' tagged'}` : '';
+  const CAT = '<svg class="cat-svg" viewBox="0 0 28 16" width="28" height="16" fill="currentColor" aria-hidden="true"><path d="M5 6C2 6 1 3.5 2 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="5" y="4" width="15" height="7" rx="3.5"/><circle cx="22" cy="6.2" r="3.2"/><path d="M20.2 3.6 20.8 .6 22.6 2.6ZM22.4 2.6 24.2 .8 24.9 3.9Z"/><g class="lg1"><path d="M17.5 10.5 19 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g><g class="lg2"><path d="M8 10.5 6.5 15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g></svg>';
+  const bar = `<div class="fbar${all && !running ? ' done' : ''}" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i>${running && pct < 88 ? `<span class="cat" style="left:${pct}%"><span class="cat-in">${CAT}</span></span>` : ''}</div><div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">

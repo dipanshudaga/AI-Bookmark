@@ -634,6 +634,13 @@ if (chrome.sidePanel?.setPanelBehavior) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(e => console.warn('Side panel setup failed:', e));
 }
 
+// ─── Keyboard shortcut: open the panel from anywhere ───
+chrome.commands?.onCommand.addListener(async cmd => {
+  if (cmd !== 'open-panel') return;
+  const win = await chrome.windows.getCurrent();
+  chrome.sidePanel.open({ windowId: win.id }).catch(e => console.warn('Could not open the panel:', e));
+});
+
 // ─── Auto-index on install ──────────────────────────────────────────────────
 chrome.runtime.onInstalled.addListener(() => {
   indexBookmarks();

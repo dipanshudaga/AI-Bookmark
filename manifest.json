@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AI Bookmark Search",
+  "name": "AI Bookmarks",
   "version": "1.0.0",
-  "description": "AI-powered bookmark categorizer & natural language search. Ask questions like 'what are some design agencies' and get relevant bookmarks.",
+  "description": "Find any bookmark by meaning. Gemini indexes your bookmarks so you can search in plain words.",
   "permissions": [
     "bookmarks",
     "favicon",
@@ -29,5 +29,17 @@
   "minimum_chrome_version": "114",
   "side_panel": {
     "default_path": "popup.html"
+  },
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "commands": {
+    "open-panel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open AI Bookmarks"
+    }
   }
 }

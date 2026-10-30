@@ -1,4 +1,18 @@
+# local only
 bookmarks_*.html
-.DS_Store
 design-source/
 docs/
+design-system/
+.taste-skill/
+.claude/
+# tooling and noise
+node_modules/
+.DS_Store
+*.log
+*.zip
+*.pem
+.env
+.env.*
+.vscode/
+.idea/
+dist/

@@ -198,6 +198,7 @@ const SKW = [[62, 34], [48, 28], [70, 38], [55, 30], [66, 32]];
 const skeleton = () => `<div class="list" aria-busy="true" aria-label="Loading">${SKW.map(([a, b], i) => `<div class="skrow" style="--d:${i * 0.12}s"><i class="skb tile"></i><div class="sktx"><i class="skb" style="width:${a}%"></i><i class="skb sm" style="width:${b}%"></i><div class="skpills"><i class="skb pill"></i><i class="skb pill"></i><i class="skb pill"></i></div></div></div>`).join('')}</div>`;
 
 const obSeen = () => { try { return localStorage.getItem('ob_skip') === '1'; } catch { return false; } };
+const pinTip = () => S.pinned === false ? '<small class="pintip">Tip: pin AI Bookmarks from the puzzle-piece menu so it is always in reach.</small>' : '';
 const onboard = () => {
   const tagged = S.tag?.tagged || 0, running = tagRunning();
   if (obSeen() || tagged || S.loading) return '';
@@ -206,7 +207,7 @@ const onboard = () => {
     ? `<section class="ob"><h3>Key saved</h3><p>Next, Gemini indexes your bookmarks.</p><button class="primary" data-a="tagnow">${ic('spark')} Get started</button></section>`
     : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Add a free Gemini key to index your bookmarks.</p>
       <form class="keyline" data-form="key"><input class="well" type="password" name="k" placeholder="Paste Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></form>
-      <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a></section>`;
+      <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>${pinTip()}</section>`;
 };
 const home = () => {
   if (S.loading) return `<main>${searchBox()}${skeleton()}</main>`;
@@ -517,6 +518,7 @@ app.addEventListener('keydown', e => {
   if (tagRunning()) pollTags();
   else if (S.tag?.job?.running && S.hasKey) { await api({ type: 'START_TAGGING' }); S.tag.job.updatedAt = Date.now(); pollTags(); }   // a run was cut short (browser closed, worker stopped): pick up where it left off
   else if (S.hasKey && BOOKMARKS.length && S.embedded < BOOKMARKS.length && !S.rebuilding) api({ type: 'GENERATE_EMBEDDINGS' }).then(() => loadStatus()).then(render);   // finish the meaning index in the background
+  if (IN_EXT && chrome.action?.getUserSettings) chrome.action.getUserSettings().then(u => { S.pinned = u.isOnToolbar; render(); }).catch(() => {});
   if (IN_EXT) {   // the panel stays open, so follow bookmark changes made elsewhere (after the background re-index)
     let t;
     const soon = () => { clearTimeout(t); t = setTimeout(async () => { if (S.editing || S.adding || S.addTag || S.screen === 'settings') return; await load(); await loadStatus(); render(); }, 4000); };

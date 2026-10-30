@@ -276,17 +276,22 @@ const settings = () => {
   const all = n && tagged >= n;
   const pct = tagPct;
   const line = (ok, text) => `<li class="${ok ? 'ok' : ''}"><i>${ok ? '✓' : ''}</i>${text}</li>`;
+  const fresh = tagged > 0 && job.total > 0 && job.total < n;
+  const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
   const statusLine = !S.hasKey ? line(true, 'Keyword search is ready')
-    : running ? line(false, `Tagging and categorising… ${num(job.done || 0)} of ${num(job.total || 0)}`)
+    : running && !job.total ? line(false, 'Looking for new bookmarks…')
+    : running ? line(false, fresh ? `Tagging ${num(job.total)} new ${job.total === 1 ? 'bookmark' : 'bookmarks'}… ${num(job.done || 0)} of ${num(job.total)}` : `Tagging and categorising… ${num(job.done || 0)} of ${num(job.total)}`)
     : job.error ? line(false, 'Stopped before finishing. Try again')
+    : caughtUp ? line(true, 'You’re all caught up. Nothing new to tag.')
     : all ? line(true, 'All bookmarks tagged and categorised')
     : line(false, tagged ? `${num(tagged)} of ${num(n)} tagged and categorised` : 'Not started yet');
+  const art = job.error && !running ? 'state-error' : all && !running ? 'state-done' : 'state-working';
   const act = S.hasKey ? 'tagnow' : 'rebuild', busy = running || S.rebuilding || !n;
-  const label = running ? 'Working on it…' : S.rebuilding ? 'Working on it…' : S.hasKey ? (tagged && tagged >= n ? 'Check for new bookmarks' : 'Get everything ready') : 'Update search';
+  const label = running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : S.hasKey ? (tagged && tagged >= n ? 'Check for new bookmarks' : 'Get everything ready') : 'Update search';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
-    <div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
-    <ul class="checks">${statusLine}</ul>
+    <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
+    <ul class="checks">${statusLine}</ul></div>${S.hasKey ? `<img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true">` : ''}</div>
     ${S.hasKey ? `<div class="barrow"><div class="bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
     <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>` : ''}
     <p class="hint">${S.hasKey ? 'One tap tags and categorises everything. You can close this panel while it works.' : 'Add a free Gemini key below to search by meaning and add tags, summaries and smarter collections.'}</p>
@@ -386,7 +391,7 @@ app.addEventListener('click', async e => {
     case 'delyes': { const b = find(S.bm); await store.remove(b.id); say('Bookmark deleted'); S.results = S.results.filter(x => x.id !== b.id); go(S.from === 'details' ? 'home' : S.from); return refresh(); }
     case 'addtag': S.addTag = true; render(); return $('.tagin', app)?.focus();
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
-    case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
+    case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
     case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
     case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
     case 'keychange': S.keyEdit = true; S.keyNote = ''; return render();

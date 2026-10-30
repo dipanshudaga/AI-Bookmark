@@ -296,7 +296,7 @@ const settings = () => {
   const pctOf = v => n ? (v / n * 100).toFixed(2) : 0;
   const segs = [...top.map(([c, v], i) => ({ c, v, bg: PAL[i] })), ...(rest ? [{ c: 'Others', v: rest, bg: 'var(--accent-tint)' }] : [])];
   const bar = `<div class="fbar" role="img" aria-label="${esc(statusText)}">${segs.map(s => `<i style="width:${pctOf(s.v)}%;background:${s.bg}" title="${esc(s.c)} ${s.v}"></i>`).join('')}${n - filed > 0 ? `<i class="hatch" style="width:${pctOf(n - filed)}%"></i>` : ''}</div>`;
-  const legend = !S.hasKey ? 'Grouped by keywords' : n - filed > 0 ? `${num(filed)} of ${num(n)} tagged` : '';
+  const legend = n - filed > 0 ? `${num(filed)} of ${num(n)} tagged` : '';
   const keys = segs.map(s => `<span><b style="background:${s.bg}"></b>${esc(s.c)} ${num(s.v)}</span>`).join('');
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = running || S.rebuilding || !n;
   const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
@@ -304,10 +304,10 @@ const settings = () => {
   <section class="hero">
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
       <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
-    ${bar}
-    <div class="fkeys">${legend ? `<span class="fl">${esc(legend)}</span>` : ''}${keys}</div>
+    ${S.hasKey ? `${bar}
+    <div class="fkeys">${legend ? `<span class="fl">${esc(legend)}</span>` : ''}${keys}</div>` : ''}
     <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
-    ${S.hasKey ? '' : '<p class="hint">Add a free key to search by meaning and add tags, summaries and smarter collections.</p>'}
+    ${S.hasKey ? '' : '<p class="hint">A free key lets Gemini tag and categorise your bookmarks.</p>'}
   </section>
   <section class="sgroup"><h3>Automatic</h3>
     <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>

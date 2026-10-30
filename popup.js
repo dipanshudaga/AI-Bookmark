@@ -59,7 +59,7 @@ let BOOKMARKS = [], CATS = {}, META = {};
 const S = {
   screen: 'home', from: 'home', q: '', draft: '', filter: 'All', colOnly: null, lastCol: null, sort: 'relevance', sel: 0, results: [],
   bm: null, loading: true, error: null, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false, copied: null,
-  engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '', noFav: false,
+  engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '',
   tag: null, tagTimer: null
 };
 let seq = 0, focusSearch = false, say = () => {};
@@ -112,7 +112,7 @@ const hl = (text, q) => {
   return out;
 };
 const favSrc = u => IN_EXT ? `${chrome.runtime.getURL('/_favicon/')}?pageUrl=${encodeURIComponent(u)}&size=32` : '';
-const fav = b => `<span class="fav" aria-hidden="true">${IN_EXT && !S.noFav ? `<img data-fav src="${esc(favSrc(b.url))}" alt="">` : ''}<span>${esc(initial(b.title || host(b.url)))}</span></span>`;
+const fav = b => `<span class="fav" aria-hidden="true">${IN_EXT ? `<img data-fav src="${esc(favSrc(b.url))}" alt="">` : ''}<span>${esc(initial(b.title || host(b.url)))}</span></span>`;
 const base = () => S.q ? S.results : S.colOnly ? (CATS[S.colOnly] || []) : BOOKMARKS;
 const shown = () => {
   let r = base();
@@ -165,10 +165,10 @@ const home = () => {
   if (S.loading) return `<main>${searchBox()}${skeleton()}</main>`;
   if (S.error) return `<main>${message('Couldn’t load bookmarks', S.error, ['retry', 'Try again'])}</main>`;
   if (!BOOKMARKS.length) return `<main>${searchBox()}${message('No bookmarks yet', 'Save a page in Chrome, or import bookmarks from Chrome’s bookmark manager, and they appear here.', ['import', 'Open bookmark manager'])}</main>`;
-  const recent = [...BOOKMARKS].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 3);
+  const recent = [...BOOKMARKS].sort((a, b) => (b.dateAdded || 0) - (a.dateAdded || 0)).slice(0, 8);
   return `<main>${searchBox()}
     <div class="sec"><h2>Recently saved</h2><button data-a="all">See all ${ic('arrow')}</button></div>
-    <ul class="list">${recent.map(b => row(b)).join('')}</ul></main>`;
+    <div class="scroll"><ul class="list">${recent.map(b => row(b)).join('')}</ul></div></main>`;
 };
 
 const browse = () => {
@@ -258,9 +258,6 @@ const settings = () => {
     <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Create a key in Google AI Studio ↗</a></form>
     <p class="note2">Gemini reads each site to write tags and a one-line summary. Titles and links are sent to Google.</p>
   </section>
-  <section class="sgroup"><h3>Appearance</h3>
-    <div class="srow"><span>Show favicons<small>Site icons next to each bookmark</small></span>${sw('favicons', !S.noFav, 'Show favicons')}</div>
-  </section>
   <section class="sgroup"><h3>Data &amp; privacy</h3>
     <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
     ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all data</button>`}</div>
@@ -276,7 +273,7 @@ const app = $('#app');
 function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
   app.dataset.screen = S.screen;
-  const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['details', 'settings'].includes(S.screen) ? '' : statusFooter();
+  const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['home', 'details', 'settings'].includes(S.screen) ? '' : statusFooter();
   app.innerHTML = header() + artBand() + SCREENS[S.screen]() + foot;
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   const inp = $('input[name=q]', app);
@@ -357,7 +354,6 @@ app.addEventListener('click', async e => {
     case 'clearask': S.confirmClear = !S.confirmClear; return render();
     case 'clearyes': { await api({ type: 'CLEAR_DATA' }); S.confirmClear = false; META = {}; say('Local data cleared'); await refresh(); return; }
     case 'autoindex': await saveSettings({ autoEmbedNew: S.settings.autoEmbedNew === false }); return render();
-    case 'favicons': S.noFav = !S.noFav; try { localStorage.setItem('nofav', S.noFav ? '1' : ''); } catch { /* storage unavailable */ } return render();
   }
 });
 app.addEventListener('change', async e => {
@@ -405,7 +401,7 @@ app.addEventListener('keydown', e => {
 (async () => {
   const live = $('#live');
   say = m => { live.textContent = ''; setTimeout(() => live.textContent = m, 30); };
-  try { S.noFav = !!localStorage.getItem('nofav'); } catch { /* storage unavailable */ }
+  try { localStorage.removeItem('nofav'); } catch { /* storage unavailable */ }   // the favicon switch is gone; clear any old choice
   if (!IN_EXT) api = (await import('./dev-fixtures.js')).devApi;
   render();
   await Promise.all([load(), loadStatus()]);

@@ -17,7 +17,7 @@ const P = {
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>', check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   back: '<path d="m15 5-7 7 7 7"/>', trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>',
   edit: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>', download: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>', chev: '<path d="m9 5 7 7-7 7"/>', down: '<path d="m6 9 6 6 6-6"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M16 7l3 3M14 9l2 2"/>', plus: '<path d="M12 5v14M5 12h14"/>', chev: '<path d="m9 5 7 7-7 7"/>', down: '<path d="m6 9 6 6 6-6"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
   code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>', play: '<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/>',
@@ -258,8 +258,7 @@ const details = () => {
   return `<main><div class="scroll"><div class="stack">
     <div class="top"><button class="sq raised" data-a="back" aria-label="Back">${ic('back')}</button>
       <div class="tools"><button class="sq raised" data-a="open" data-id="${esc(b.id)}" aria-label="Open in new tab">${ic('open')}</button>
-      <button class="sq raised del" data-a="del" aria-label="Delete bookmark" aria-expanded="${S.confirm}">${ic('trash')}</button></div></div>
-    ${S.confirm ? `<div class="confirm raised" role="alertdialog" aria-label="Confirm delete"><span>Delete this bookmark from Chrome? This can’t be undone.</span><button class="raised" data-a="del">Cancel</button><button class="raised yes" data-a="delyes">Delete</button></div>` : ''}
+      <button class="sq raised del" data-a="del" aria-label="Delete bookmark">${ic('trash')}</button></div></div>
     ${S.editing ? `<form class="edit" data-form="edit"><label class="lbl" for="et">Title</label><input class="well" id="et" name="t" value="${esc(b.title)}"><label class="lbl" for="eu">URL</label><input class="well" id="eu" name="u" value="${esc(b.url)}" type="url"><label class="lbl" for="es">Summary</label><textarea class="well" id="es" name="s" rows="3" maxlength="400">${esc(m.summary || '')}</textarea><div class="btns"><button type="button" class="raised" data-a="edit">Cancel</button><button class="primary">Save</button></div></form>` : `
     <div class="ident">${fav(b)}<div><h2>${esc(b.title || host(b.url))}</h2><span class="d">${esc(host(b.url))}</span></div></div>
     <div class="btns"><button class="primary" data-a="open" data-id="${esc(b.id)}">Open link ${ic('open')}</button>
@@ -305,16 +304,15 @@ const settings = () => {
     <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
   </section>
   <section class="sgroup">
-    <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
+    <div class="srow"><span class="withicon">${ic('spark')}<span class="tx">Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
 ${S.hasKey && !S.keyEdit
-      ? `<div class="srow"><span>API key<small class="keymask">••••••••••••${esc(S.keyTail)}</small></span><span class="keyact"><button class="raised sm" data-a="keychange">Change</button><button class="raised sm danger" data-a="keyremove">Remove</button></span></div>`
-      : `<form class="srow col" data-form="key"><span>API key<small>${esc(S.keyNote || (S.hasKey ? 'Paste a new key to replace the saved one.' : 'Not connected yet.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste your Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button>${S.hasKey ? '<button type="button" class="raised sm" data-a="keycancel">Cancel</button>' : ''}</div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>`}
+      ? `<div class="srow"><span class="withicon">${ic('key')}<span class="tx">API key<small class="keymask">••••••••••••${esc(S.keyTail)}</small></span></span><span class="keyact"><button class="raised sm" data-a="keychange">Change</button><button class="raised sm danger" data-a="keyremove">Remove</button></span></div>`
+      : `<form class="srow col" data-form="key"><span class="withicon">${ic('key')}<span class="tx">API key<small>${esc(S.keyNote || (S.hasKey ? 'Paste a new key to replace the saved one.' : 'Not connected yet.'))}</small></span></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste your Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button>${S.hasKey ? '<button type="button" class="raised sm" data-a="keycancel">Cancel</button>' : ''}</div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>`}
   </section>
   <section class="sgroup"><h3>Your data</h3>
     <button class="drow" data-a="export">${ic('upload')}<span><b>Export bookmarks</b><small>HTML file, opens in any browser</small></span>${ic('chev', 'go')}</button>
     <button class="drow" data-a="import">${ic('download')}<span><b>Import bookmarks</b><small>From a bookmarks file</small></span>${ic('chev', 'go')}</button>
-    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Your bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>`
-      : `<button class="drow bad" data-a="clearask">${ic('trash')}<span><b>Clear tags and index</b><small>Your bookmarks stay</small></span></button>`}
+    <button class="drow bad" data-a="clearask">${ic('trash')}<span><b>Clear tags and index</b><small>Your bookmarks stay</small></span></button>
   </section>
   </div><div class="foot-text"><p class="note2">Titles and links are sent to Google when you use Gemini.</p><p class="about">v${esc(ver)} · AI Bookmarks</p></div>${artBand()}</div></main>`;
 };
@@ -326,14 +324,20 @@ function render() {
   const active = document.activeElement, hadSearch = app.contains(active) && active.name === 'q';
   app.dataset.screen = S.screen;
   const foot = S.screen === 'results' ? (S.q && shown().length ? hintFooter() : statusFooter()) : ['home', 'details', 'settings'].includes(S.screen) ? '' : statusFooter();
-  app.innerHTML = header() + SCREENS[S.screen]() + foot;
+  app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '');
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   checkFavicons(app);
+  $('.dlg [autofocus]', app)?.focus();
   const inp = $('input[name=q]', app);
   if (inp && (hadSearch || focusSearch)) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
   focusSearch = false;
   $('.row.sel', app)?.scrollIntoView({ block: 'nearest' });
 }
+const clearDialog = () => `<div class="scrim" data-a="clearask"><div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dt" data-stop>
+  <h3 id="dt">Clear tags and index?</h3><p>This removes the tags, summaries and search index Gemini made. Your bookmarks aren’t touched, and you can tag them again any time.</p>
+  <div class="dact"><button class="raised" data-a="clearask" autofocus>Cancel</button><button class="danger-solid" data-a="clearyes">Clear</button></div></div></div>`;
+let toastTimer;
+const toast = (msg, undo) => { clearTimeout(toastTimer); S.toast = { msg, undo }; render(); toastTimer = setTimeout(() => { S.toast = null; render(); }, 7000); };
 const go = (screen, patch = {}) => { Object.assign(S, { screen, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false }, patch); render(); };
 
 // ── actions ────────────────────────────────────────────────────────────────
@@ -386,6 +390,7 @@ function exportHtml() {   // the standard bookmarks file every browser can impor
 
 app.addEventListener('click', async e => {
   const el = e.target.closest('[data-a]'); if (!el || el.tagName === 'SELECT') return;
+  if (el.classList.contains('scrim') && e.target.closest('.dlg')) return;
   const a = el.dataset.a, k = el.dataset.k;
   const resultsPatch = (p) => go('results', { q: '', draft: '', filter: 'All', sort: 'recent', sel: -1, loading: false, error: null, ...p });
   switch (a) {
@@ -402,9 +407,16 @@ app.addEventListener('click', async e => {
     case 'back': return go(S.from === 'details' ? 'home' : S.from);
     case 'open': return openUrl(find(el.dataset.id));
     case 'copy': return copy(find(el.dataset.id));
-    case 'del': S.confirm = !S.confirm; return render();
+    case 'del': {
+      const b = find(S.bm); if (!b) return;
+      const snap = IN_EXT ? (await chrome.bookmarks.get(b.id).catch(() => []))[0] : null;
+      await store.remove(b.id); S.results = S.results.filter(x => x.id !== b.id);
+      go(S.from === 'details' ? 'home' : S.from);
+      toast('Bookmark deleted', snap ? () => chrome.bookmarks.create({ parentId: snap.parentId, index: snap.index, title: snap.title, url: snap.url }).then(refresh) : null);
+      return refresh();
+    }
+    case 'undo': { const f = S.toast?.undo; clearTimeout(toastTimer); S.toast = null; render(); return f?.(); }
     case 'edit': S.editing = !S.editing; return render();
-    case 'delyes': { const b = find(S.bm); await store.remove(b.id); say('Bookmark deleted'); S.results = S.results.filter(x => x.id !== b.id); go(S.from === 'details' ? 'home' : S.from); return refresh(); }
     case 'addtag': S.addTag = true; render(); return $('.tagin', app)?.focus();
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
     case 'tagnow': { const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }

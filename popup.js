@@ -308,10 +308,8 @@ const settings = () => {
     <div class="fkeys">${legend ? `<span class="fl">${esc(legend)}</span>` : ''}${keys}</div>` : ''}
     <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
   </section>
-  <section class="sgroup"><h3>Automatic</h3>
+  <section class="sgroup">
     <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
-  </section>
-  <section class="sgroup"><h3>Gemini</h3>
 ${S.hasKey && !S.keyEdit
       ? `<div class="srow"><span>API key<small class="keymask">••••••••••••${esc(S.keyTail)}</small></span><span class="keyact"><button class="raised sm" data-a="keychange">Change</button><button class="raised sm danger" data-a="keyremove">Remove</button></span></div>`
       : `<form class="srow col" data-form="key"><span>API key<small>${esc(S.keyNote || (S.hasKey ? 'Paste a new key to replace the saved one.' : 'Not connected yet.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste your Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button>${S.hasKey ? '<button type="button" class="raised sm" data-a="keycancel">Cancel</button>' : ''}</div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>`}

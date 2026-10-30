@@ -270,30 +270,39 @@ const details = () => {
 
 const sw = (a, on, label) => `<button class="sw" role="switch" aria-checked="${on}" aria-label="${label}" data-a="${a}"><i></i></button>`;
 const settings = () => {
-  const ver = IN_EXT ? chrome.runtime.getManifest().version : '1.0.0', n = BOOKMARKS.length;
-  const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0, running = tagRunning();
-  const pct = running && job.total ? Math.round(((job.done || 0) + (job.failed || 0)) / job.total * 100) : (n ? Math.round(tagged / n * 100) : 0);
-  const sub = running ? `Organising ${num(job.done || 0)} of ${num(job.total || 0)}…` : job.error ? 'Last run failed. Try again.' : `${num(tagged)} organised with Gemini`;
-  const auto = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false;
-  const chev = open => `<span class="chev ${open ? 'open' : ''}">${ic('back')}</span>`;
+  const ver = IN_EXT ? chrome.runtime.getManifest().version : '1.0.0', n = BOOKMARKS.length, st = idxState();
+  const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0, running = tagRunning(), local = S.engine === 'local';
+  const done = (a, b) => b ? Math.min(100, Math.round(a / b * 100)) : 0;
+  const tagPct = running && job.total ? done((job.done || 0) + (job.failed || 0), job.total) : done(tagged, n);
+  const idxPct = done(S.embedded, n);
+  const pct = S.hasKey ? Math.round((tagPct + (local ? tagPct : idxPct)) / 2) : idxPct;
+  const line = (ok, text) => `<li class="${ok ? 'ok' : ''}"><i>${ok ? '✓' : ''}</i>${text}</li>`;
+  const idxText = st === 'ready' ? 'Searchable by meaning' : st === 'indexing' ? 'Getting searchable…' : st === 'error' ? 'Search setup failed. Try again' : `Searchable by meaning (${num(S.embedded)} of ${num(n)})`;
+  const tagText = running ? `Tagging and sorting… ${num(job.done || 0)} of ${num(job.total || 0)}` : job.error ? 'Tagging stopped. Try again' : tagged >= n && n ? 'Tagged and sorted into collections' : `Tagged and sorted (${num(tagged)} of ${num(n)})`;
+  const act = S.hasKey ? 'tagnow' : 'rebuild', busy = running || S.rebuilding || !n;
+  const label = running ? 'Working on it…' : S.rebuilding ? 'Working on it…' : S.hasKey ? (tagged && tagged >= n ? 'Check for new bookmarks' : 'Get everything ready') : 'Update search';
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
   <section class="hero">
     <div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div>
-    <p class="${job.error && !running ? 'err' : ''}">${esc(sub)}</p>
-    <div class="barrow"><div class="bar" role="progressbar" aria-label="Organised" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
-    <button class="primary" data-a="tagnow" ${running || !n || !S.hasKey ? 'disabled' : ''}>${ic('spark')} ${running ? 'Organising…' : (tagged ? 'Organise new' : 'Organise with Gemini')}</button>
-    ${S.hasKey ? '' : '<p class="hint">Add a Gemini key below to start.</p>'}
+    <ul class="checks">${line(st === 'ready' && !local, idxText)}${S.hasKey ? line(tagged >= n && n && !running, tagText) : ''}</ul>
+    <div class="barrow"><div class="bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div><span>${pct}%</span></div>
+    <button class="primary" data-a="${act}" ${busy ? 'disabled' : ''}>${ic('spark')} ${label}</button>
+    <p class="hint">${S.hasKey ? 'One tap tags, sorts and indexes everything. You can close this panel while it works.' : 'Add a Gemini key below to also tag and sort your bookmarks.'}</p>
   </section>
-  <section class="sgroup">
-    <div class="srow"><span>Keep up to date</span>${sw('auto', auto, 'Keep index and organisation up to date')}</div>
-    <div class="srow"><span>Search</span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-    <button class="srow link-row" data-a="keyopen" aria-expanded="${!!S.keyOpen}"><span>Gemini key</span><em class="chip ${S.hasKey ? 'ok' : ''}">${S.hasKey ? 'Connected' : 'Not set'}</em>${chev(S.keyOpen)}</button>
-    ${S.keyOpen ? `<form class="keyform" data-form="key"><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a key from Google AI Studio ↗</a>${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}</form>` : ''}
-    <button class="srow link-row" data-a="moreopen" aria-expanded="${!!S.moreOpen}"><span>Data</span>${chev(S.moreOpen)}</button>
-    ${S.moreOpen ? `<div class="dbtns"><button class="raised" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button><button class="raised" data-a="export">Export</button><button class="raised" data-a="import">Import</button></div>
-    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : `<button class="clearlink" data-a="clearask">Clear all data</button>`}` : ''}
+  <section class="sgroup"><h3>Search</h3>
+    <div class="srow"><span>How to search<small>Auto picks the fastest way for each search</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div class="srow"><span>Get new bookmarks ready<small>Index, tag and sort new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
   </section>
-  <p class="about">Titles and links go to Google when you use Gemini. · v${esc(ver)}</p>
+  <section class="sgroup"><h3>Gemini</h3>
+    <form class="srow col" data-form="key"><span>API key<small>${esc(S.keyNote || (S.hasKey ? 'Connected. Saved on this device.' : 'Not connected yet.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key from Google AI Studio ↗</a></form>
+  </section>
+  <section class="sgroup"><h3>Your data</h3>
+    <div class="dbtns"><button class="raised" data-a="export">${ic('upload')} Export</button><button class="raised" data-a="import">${ic('download')} Import</button>
+    ${S.confirmClear ? '' : `<button class="raised danger" data-a="clearask">${ic('trash')} Clear all</button>`}</div>
+    ${S.confirmClear ? `<div class="confirm" role="alertdialog" aria-label="Confirm clear data"><span>Clear tags, summaries and the index? Your Chrome bookmarks stay.</span><button class="raised" data-a="clearask">Cancel</button><button class="raised yes" data-a="clearyes">Clear</button></div>` : ''}
+    <p class="note2">Titles and links are sent to Google when you use Gemini.</p>
+  </section>
+  <p class="about">v${esc(ver)} · AI Bookmarks</p>
   </div>${artBand()}</div></main>`;
 };
 

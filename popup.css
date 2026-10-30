@@ -1,5 +1,5 @@
 
-/* AI Bookmarks: risograph design system.
+/* AI Bookmark: risograph design system.
    Type:    --fs-xs 11 · sm 12 · base 14 · md 16 · lg 18 · xl 22.  Weights: 400 body, 500 labels, 600 buttons, 700 headings.
    Space:   --sp-1..6 = 4 8 12 16 20 24. Cards pad 16, blocks inside a card sit 12-16 apart, list rows pad 12.
    Radius:  --r-sm 6 (chips, boxes) · --r-md 8 (buttons, fields) · --r-lg 12 (cards, dialogs).
@@ -360,9 +360,8 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .sec>button::after{inset:-8px -6px}
 /* a busy button stays solid and readable; the spark turns */
 .primary.busy,.primary.busy:hover{background:var(--accent);color:var(--on-accent);cursor:progress}
-.busy svg{animation:spin 1.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.busy svg{animation:none}}
+@media (prefers-reduced-motion:reduce){.dots i{animation:none;opacity:.8}}
 /* list rows and setting rows run edge to edge so hover and selection fill the full width; content keeps its place */
 .list{margin-inline:calc(var(--sp-4) * -1)}
 .list>.row,.list>.skrow{padding-inline:var(--sp-4)}
@@ -383,3 +382,131 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .hero-top{align-items:center}
 .hero-art{margin-bottom:0}
 .hero-l{padding-bottom:var(--sp-1)}
+
+/* hover: tags turn white with an edge so they stay clear on the neon wash */
+.row:hover .rt i,.row.sel .rt i{background:#fff;color:var(--ink-2);box-shadow:inset 0 0 0 1px rgba(24,24,40,.14)}
+.ob .mosaic{margin-top:var(--sp-1)}
+.ob .fmeta{margin-top:calc(var(--sp-1) * -1)}
+.ob .keylink{align-self:flex-start}
+button.link{background:none;border:0;padding:0;font:inherit;font-size:var(--fs-sm);color:var(--accent-text);text-decoration:underline;cursor:pointer;text-align:left}
+
+/* details: more room between sections, tags stacked under their label, dates and address low and quiet */
+.stack{gap:var(--sp-6)}
+.sel-wrap select{padding-left:var(--sp-3)}
+.tags{flex-direction:column;align-items:stretch;gap:var(--sp-2)}
+.tags .lbl{padding-top:0}
+.chips{justify-content:flex-start}
+.meta{margin-top:auto;padding-top:var(--sp-4);border-top:1px solid var(--line)}
+.meta dt{font-weight:var(--fw-regular);font-size:var(--fs-sm);color:var(--ink-3)}
+.meta dd{font-size:var(--fs-xs);color:var(--ink-3)}
+.meta+.art{margin-top:0}
+/* illustration: fills the width, the empty margins of the artwork are cropped */
+.art{max-width:none;margin-inline:calc(var(--sp-4) * -1);width:calc(100% + var(--sp-4) * 2);overflow:hidden;padding-top:var(--sp-4)}
+.art img{width:110%;max-width:none;margin-left:-5%}
+
+/* details: Summary, Collection and Tags share one layout: label on top, content under it, same gap */
+.field{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:var(--sp-2)}
+.field .lbl,.field .sum{margin:0}
+.sel-wrap{max-width:none;flex:none;width:100%}
+.sumh{display:flex;justify-content:space-between;align-items:baseline;gap:var(--sp-3)}
+/* the row arrow gets no box of its own on hover; the whole row already lights up */
+.row .more-btn:hover{background:none;color:inherit}
+/* details: one Organise card (collection row + tags), delete as a quiet text action at the bottom */
+.org{border:1px solid var(--line-2);border-radius:var(--r-lg);padding:var(--sp-4);display:grid;grid-template-columns:minmax(0,1fr);gap:var(--sp-3)}
+.org hr{border:0;border-top:1px solid var(--line);margin:0}
+.orow{position:relative;display:flex;justify-content:space-between;align-items:center;min-height:var(--hit);cursor:pointer}
+.orow .lbl{margin:0}
+.oval{display:flex;align-items:center;gap:var(--sp-1);color:var(--ink-2);font-size:var(--fs-base)}
+.oval svg{width:16px;height:16px;color:var(--ink-3)}
+.orow select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:var(--fs-base)}
+.orow:has(select:focus-visible){outline:2px solid var(--accent);outline-offset:2px;border-radius:var(--r-sm)}
+.deltxt{align-self:center;margin-top:var(--sp-3);padding:var(--sp-2) var(--sp-3);background:none;border:0;color:var(--danger);font:inherit;font-size:var(--fs-sm);cursor:pointer;border-radius:var(--r-sm)}
+.deltxt:hover{background:var(--danger-tint)}
+.deltxt+.art{margin-top:0}
+/* tags in lists: white with a fine edge, in every state */
+.rt i,.rt i.m{background:#fff;color:var(--ink-2);box-shadow:inset 0 0 0 1px rgba(24,24,40,.14)}
+.brand{align-items:center}.wm{font-size:var(--fs-lg);letter-spacing:.015em}
+
+/* delete: icon only, at the right of the link, level with the top of the title */
+.ident{align-items:flex-start}
+.ident>div:not(.fav){align-self:center}
+.icon-del{flex:none;margin-left:auto;align-self:flex-start;width:var(--hit);height:var(--hit);display:grid;place-items:center;border-radius:var(--r-md);color:var(--ink-3);background:none;border:0;cursor:pointer;margin-top:calc(var(--sp-1) * -1)}
+.icon-del:hover{background:var(--danger-tint);color:var(--danger)}
+.icon-del svg{width:20px;height:20px}
+.ident>div:not(.fav){flex:1}
+.icon-del{margin-top:-2px}
+/* delete icon: centred on the site logo */
+.icon-del{align-self:center;margin-top:0}
+.ident{align-items:center}.top{display:flex;justify-content:space-between;align-items:center}
+
+/* details: flat rows like Settings */
+.lrows{margin-top:calc(var(--sp-2) * -1)}
+.lrow{justify-content:space-between;align-items:center;min-height:52px;position:relative;cursor:pointer}
+.lrow .lt{font-weight:var(--fw-medium);color:var(--ink)}
+.lrow .oval{display:flex;align-items:center;gap:var(--sp-1);color:var(--ink-3);font-size:var(--fs-sm)}
+.lrow select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:var(--fs-base)}
+.lrow .oval svg{transition:transform .15s}.lrow .oval.open svg{transform:rotate(90deg)}
+.drow.tagrow{flex-direction:column;align-items:stretch;gap:var(--sp-2);cursor:default;padding-top:var(--sp-3);padding-bottom:var(--sp-3)}
+.drow.static:hover{background:none}
+.meta2{margin-inline:calc(var(--sp-4) * -1);padding:var(--sp-1) var(--sp-4) var(--sp-3);display:grid;gap:var(--sp-2);border-top:1px solid var(--line)}
+.meta2 div{display:flex;justify-content:space-between;gap:var(--sp-4);font-size:var(--fs-sm)}
+.meta2 dt{color:var(--ink-3)}.meta2 dd{margin:0;font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2)}
+.lrows .drow.bad{margin-top:0}
+.lrow>span{flex:none}.lrow>.lt{flex:1}
+.th{display:flex;align-items:center;gap:var(--sp-3)}.th svg{width:20px;height:20px;flex:none;color:var(--accent-text)}.th .lt{font-weight:var(--fw-medium)}
+.tagrow .chips{padding-left:calc(20px + var(--sp-3))}
+
+/* settings: one list, every row the same, divided by full-width bars */
+.sgroup .srow{margin-inline:calc(var(--sp-4) * -1);width:calc(100% + var(--sp-4) * 2);padding:var(--sp-3) var(--sp-4);min-height:64px;border-top:1px solid var(--line)}
+.sgroup .srow:first-child{border-top:0}
+.sgroup .drow{min-height:64px}
+.sgroup .drow+.drow,.sgroup .srow+.drow{border-top:1px solid var(--line)}
+/* details rows: value and arrow stay on one line */
+.lrow>.oval{flex-direction:row;align-items:center;white-space:nowrap}
+
+/* details rows, take two: tags on the right, dates as plain rows, a compact collection menu */
+.drow.tagrow{flex-direction:row;align-items:flex-start;gap:var(--sp-3);padding-top:var(--sp-3);padding-bottom:var(--sp-3)}
+.tagrow .chips{flex:1;justify-content:flex-end;max-width:68%;padding-left:0;gap:var(--sp-1)}
+.tagrow .chip{height:26px;padding:0 var(--sp-2);font-size:var(--fs-xs)}
+.tagrow .chip button{width:12px;height:12px}
+.lrow.static{cursor:default}
+.oval.mono{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2)}
+.colwrap{position:relative}
+.cscrim{position:fixed;inset:0;z-index:18}
+.cmenu{position:absolute;z-index:19;right:0;top:calc(100% - var(--sp-2));width:min(240px,calc(100% - var(--sp-4)));max-height:300px;overflow-y:auto;background:var(--bg);border:1px solid var(--line-2);border-radius:var(--r-lg);padding:var(--sp-1);box-shadow:0 8px 24px rgba(24,24,40,.14)}
+.cm{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-2);width:100%;min-height:40px;padding:0 var(--sp-3);border-radius:var(--r-md);text-align:left;color:var(--ink);font-size:var(--fs-base)}
+.cm:hover{background:var(--sel)}
+.cm.on{font-weight:var(--fw-medium);color:var(--accent-text)}
+.cm svg{width:16px;height:16px;flex:none}
+.cmenu.up{top:auto;bottom:calc(100% - var(--sp-2))}
+
+/* summary row: one line on the right, the full text opens in a dialog */
+.sumval{min-width:0;max-width:58%}
+.sv2{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlg textarea{width:100%;resize:vertical;padding:var(--sp-3);font-size:var(--fs-base);line-height:var(--lh)}
+.dlg .link{justify-self:start}
+
+/* tags: three at most until expanded; long ones are cut with an ellipsis */
+.chip .ct{max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip.more{color:var(--accent-text);font-weight:var(--fw-medium);cursor:pointer}
+
+/* edit title and address: a pencil at the right of the link row, centred on the logo */
+.icon-edit{flex:none;align-self:center;width:var(--hit);height:var(--hit);display:grid;place-items:center;border-radius:var(--r-md);color:var(--ink-3);background:none;border:0;cursor:pointer}
+.icon-edit:hover{background:var(--accent-tint);color:var(--accent-text)}
+
+/* tags dialog */
+.dchips{justify-content:flex-start;max-width:none}
+.tagadd{display:flex;gap:var(--sp-2)}
+.tagadd input{flex:1;min-width:0;height:var(--ctl);padding:0 var(--sp-3);font-size:var(--fs-base)}
+.tagadd .sm{height:var(--ctl)}
+.dact.one{grid-template-columns:1fr}
+/* every value on the right of a row is the same size */
+.lrow .oval,.lrow .sv2,.oval.mono{font-size:var(--fs-sm)}
+
+/* busy button: dimmed, three soft dots. Phase is set inline so a re-render does not restart the motion. */
+.primary.busy,.primary.busy:hover{opacity:.75}
+.dots{display:inline-flex;align-items:center;gap:4px;margin-right:var(--sp-1)}
+.dots i{width:5px;height:5px;border-radius:50%;background:currentColor;animation:dotp 1.2s ease-in-out infinite;animation-delay:var(--ph,0s)}
+.dots i:nth-child(2){animation-delay:calc(var(--ph,0s) + .15s)}
+.dots i:nth-child(3){animation-delay:calc(var(--ph,0s) + .3s)}
+@keyframes dotp{0%,70%,100%{opacity:.35;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AI Bookmarks",
-  "version": "1.0.0",
-  "description": "Bookmarks you can actually find. Ask in plain words and AI searches all of them.",
+  "name": "AI Bookmark",
+  "version": "1.1.0",
+  "description": "Stop digging through your bookmarks. Just search smart with AI.",
   "permissions": [
     "bookmarks",
     "favicon",
@@ -11,7 +11,7 @@
     "unlimitedStorage"
   ],
   "action": {
-    "default_title": "AI Bookmarks",
+    "default_title": "AI Bookmark",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -39,7 +39,7 @@
         "default": "Ctrl+Shift+K",
         "mac": "Command+Shift+K"
       },
-      "description": "Open AI Bookmarks"
+      "description": "Open AI Bookmark"
     }
   }
 }

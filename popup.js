@@ -1,4 +1,4 @@
-// AI Bookmarks popup. Talks to background.js over runtime messages; renders one screen at a time.
+// AI Bookmark popup. Talks to background.js over runtime messages; renders one screen at a time.
 
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -17,6 +17,7 @@ const P = {
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>', check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   back: '<path d="m15 5-7 7 7 7"/>', trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/>',
   edit: '<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>', upload: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>', download: '<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>',
+  pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>', text: '<path d="M4 6h16M4 12h16M4 18h10"/>', calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>', tag: '<path d="M3 12V5a2 2 0 0 1 2-2h7l9 9-9 9z"/><circle cx="8" cy="8" r="1.4"/>', clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9.2-9.2M16 7l3 3M14 9l2 2"/>', plus: '<path d="M12 5v14M5 12h14"/>', chev: '<path d="m9 5 7 7-7 7"/>', down: '<path d="m6 9 6 6 6-6"/>',
   folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
@@ -60,7 +61,7 @@ const store = {
 let BOOKMARKS = [], CATS = {}, META = {};
 const S = {
   screen: 'home', from: 'home', q: '', draft: '', filter: 'All', colOnly: null, lastCol: null, sort: 'relevance', sel: -1, results: [],
-  bm: null, loading: true, error: null, confirm: false, confirmClear: false, keyDialog: false, editing: false, adding: false, addTag: false, copied: null,
+  bm: null, loading: true, error: null, confirm: false, confirmClear: false, keyDialog: false, sumDialog: false, tagsDialog: false, colMenu: false, editing: false, adding: false, addTag: false, copied: null,
   engine: 'auto', settings: {}, hasKey: false, embedded: 0, rebuilding: false, idxError: false, keyNote: '',
   tag: null, tagTimer: null
 };
@@ -172,8 +173,8 @@ const statusFooter = () => {
 };
 const hintFooter = () => `<footer class="foot hint"><span>Use <kbd>↑</kbd> <kbd>↓</kbd> to navigate</span><span><kbd>↵</kbd> Open · <kbd>⌘C</kbd> Copy link</span></footer>`;
 const header = () => `<header class="hdr">
-  <button class="brand" data-a="home" aria-label="AI Bookmarks, go to home"><img class="logo" src="assets/img/logo.webp" alt="" width="28" height="28">
-    <span><span class="wm">AI BOOKMARKS</span><span class="sub">Personal internet archive</span></span></button>
+  <button class="brand" data-a="home" aria-label="AI Bookmark, go to home"><img class="logo" src="assets/img/logo.webp" alt="" width="28" height="28">
+    <span class="wm">AI BOOKMARK</span></button>
   <button class="circle" data-a="find" aria-label="Search" ${S.screen === 'home' || S.screen === 'results' && !S.colOnly ? 'aria-current="page"' : ''}>${ic('search')}</button>
   <button class="circle" data-a="cols" aria-label="Collections" ${S.screen === 'collections' ? 'aria-current="page"' : ''}>${ic('layers')}</button>
   <button class="circle" data-a="settings" aria-label="Settings" ${S.screen === 'settings' ? 'aria-current="page"' : ''}>${ic('gear')}</button></header>`;
@@ -197,17 +198,30 @@ const message = (title, text, btn, art = false) => `<div class="empty">${art ? '
 const SKW = [[62, 34], [48, 28], [70, 38], [55, 30], [66, 32]];
 const skeleton = () => `<div class="list" aria-busy="true" aria-label="Loading">${SKW.map(([a, b], i) => `<div class="skrow" style="--d:${i * 0.12}s"><i class="skb tile"></i><div class="sktx"><i class="skb" style="width:${a}%"></i><i class="skb sm" style="width:${b}%"></i><div class="skpills"><i class="skb pill"></i><i class="skb pill"></i><i class="skb pill"></i></div></div></div>`).join('')}</div>`;
 
+async function startIndexing() {
+  if (tagRunning()) return;
+  await api({ type: 'START_TAGGING' });
+  S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } };
+  render(); pollTags();
+}
+const progressBoxes = (n, tagged, running) => {   // twenty boxes, each a twentieth of the bookmarks; the next one glows while indexing runs
+  const cells = 20, filled = n ? Math.floor(tagged / n * cells) : 0, pct = n ? Math.min(100, Math.round(tagged / n * 100)) : 0;
+  return `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd" style="animation-delay:-${Date.now() % 1000}ms"' : ''}></i>`).join('')}</div><div class="fkeys fmeta"><span>${num(tagged)} of ${num(n)}</span><span>${pct}%</span></div>`;
+};
+const flowOn = () => { try { return localStorage.getItem('ob_flow') === '1'; } catch { return false; } };
 const obSeen = () => { try { return localStorage.getItem('ob_skip') === '1'; } catch { return false; } };
-const pinTip = () => S.pinned === false ? '<small class="pintip">Tip: pin AI Bookmarks from the puzzle-piece menu so it is always in reach.</small>' : '';
+const pinTip = () => S.pinned === false ? '<small class="pintip">Tip: pin AI Bookmark from the puzzle-piece menu so it is always in reach.</small>' : '';
 const onboard = () => {
-  const tagged = S.tag?.tagged || 0, running = tagRunning();
-  if (obSeen() || tagged || S.loading) return '';
-  if (running) return `<section class="ob"><h3>Indexing your bookmarks…</h3><p>You can keep searching.</p></section>`;
-  return S.hasKey
-    ? `<section class="ob"><h3>Key saved</h3><p>Next, Gemini indexes your bookmarks.</p><button class="primary" data-a="tagnow">${ic('spark')} Get started</button></section>`
-    : `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Add a free Gemini key to index your bookmarks.</p>
+  const n = BOOKMARKS.length, tagged = S.tag?.tagged || 0, running = tagRunning(), flow = flowOn();
+  if (obSeen() || S.loading) return '';
+  if (!S.hasKey) return `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Add a free Gemini key to index your bookmarks. Titles and links go to Google.</p>
       <form class="keyline" data-form="key"><input class="well" type="password" name="k" placeholder="Paste Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></form>
       <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>${pinTip()}</section>`;
+  if (flow && tagged < n && !running && S.tag?.job?.error) return `<section class="ob"><h3>Indexing stopped</h3><p>Gemini did not accept the request. Check your key in Settings, then try again.</p><button class="primary" data-a="obstart">${ic('spark')} Try again</button><button class="link keylink" data-a="settings">Open Settings</button></section>`;
+  if (flow && tagged < n) return `<section class="ob"><h3>Indexing your bookmarks</h3><p>Gemini is reading them. This takes a few minutes. You can keep searching.</p>${progressBoxes(n, tagged, running)}<button class="link keylink" data-a="settings">See progress in Settings</button></section>`;
+  if (flow) return `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>All indexed</h3><p>Search now understands what each page is about.</p></section>`;
+  if (!tagged && !running) return `<section class="ob"><h3>Key saved</h3><p>Next, Gemini indexes your bookmarks.</p><button class="primary" data-a="obstart">${ic('spark')} Start indexing</button></section>`;
+  return '';
 };
 const home = () => {
   if (S.loading) return `<main>${searchBox()}${skeleton()}</main>`;
@@ -255,21 +269,23 @@ const collections = () => {
 const details = () => {
   const b = BOOKMARKS.find(x => x.id === S.bm);
   if (!b) return `<main>${message('Bookmark not found', 'It may have been deleted.', ['home', 'Back to home'])}</main>`;
-  const m = META[b.id] || {}, tags = m.tags || [], aiTags = (m.aiTags || []).filter(t => !tags.includes(t)), cur = b.categories?.[0] || '', names = Object.keys(CATS);
-  const aiSum = !m.summary && m.aiSummary;
+  const m = META[b.id] || {}, tags = m.tags || [], aiTags = (m.aiTags || []).filter(t => !tags.includes(t)), allTags = [...tags.map(t => [t, 0]), ...aiTags.map(t => [t, 1])], shownTags = S.allTags ? allTags : allTags.slice(0, 3), cur = b.categories?.[0] || '', names = Object.keys(CATS);
+  const aiSum = !m.summary && m.aiSummary, unread = !m.summary && !m.aiSummary && m.aiRead === false;
   return `<main><div class="scroll"><div class="stack">
-    <div class="top"><button class="sq raised" data-a="back" aria-label="Back">${ic('back')}</button>
-      <div class="tools"><button class="sq raised" data-a="open" data-id="${esc(b.id)}" aria-label="Open in new tab">${ic('open')}</button>
-      <button class="sq raised del" data-a="del" aria-label="Delete bookmark">${ic('trash')}</button></div></div>
+    <div class="top"><button class="sq raised" data-a="back" aria-label="Back">${ic('back')}</button><button class="sq raised del" data-a="del" aria-label="Delete bookmark" title="Delete bookmark">${ic('trash')}</button></div>
     ${S.editing ? `<form class="edit" data-form="edit"><label class="lbl" for="et">Title</label><input class="well" id="et" name="t" value="${esc(b.title)}"><label class="lbl" for="eu">URL</label><input class="well" id="eu" name="u" value="${esc(b.url)}" type="url"><label class="lbl" for="es">Summary</label><textarea class="well" id="es" name="s" rows="3" maxlength="400">${esc(m.summary || '')}</textarea><div class="btns"><button type="button" class="raised" data-a="edit">Cancel</button><button class="primary">Save</button></div></form>` : `
     <div class="ident">${fav(b)}<div><h2>${esc(b.title || host(b.url))}</h2><span class="d">${esc(host(b.url))}</span></div></div>
     <div class="btns"><button class="primary" data-a="open" data-id="${esc(b.id)}">Open link ${ic('open')}</button>
       <button class="raised" data-a="copy" data-id="${esc(b.id)}">${ic(S.copied === b.id ? 'check' : 'copy')} ${S.copied === b.id ? 'Copied' : 'Copy link'}</button></div>
-    <section><div class="sumh"><h3 class="lbl">Summary</h3>${aiSum ? '<small>Summary by Gemini</small>' : ''}</div><p class="sum">${esc(m.summary || m.aiSummary || 'No summary yet.')} <button class="link" data-a="edit">${m.summary || m.aiSummary ? 'Edit' : 'Add one'}</button></p></section>
-    <div class="field"><label class="lbl" for="colsel">Collection</label><div class="sel-wrap">${badge(cur || 'Folder', 'lead')}<select id="colsel" class="raised" data-a="setcol">${names.map(n => `<option ${n === cur ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>${ic('down', 'tail')}</div></div>
-    <div class="field tags"><span class="lbl" id="tg">Tags</span><div class="chips" role="list" aria-labelledby="tg">${tags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}${aiTags.map(t => `<span class="chip" role="listitem">${esc(t)}<button data-a="tagdel" data-k="ai" data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('')}
-      ${S.addTag ? `<form data-form="tag"><input class="tagin well" name="t" aria-label="New tag" maxlength="20" autocomplete="off"></form>` : `<button class="chip add raised" data-a="addtag" aria-label="Add tag">${ic('plus')}</button>`}</div></div>
-    <dl class="meta"><div><dt>Saved</dt><dd>${fmt(b.dateAdded)}</dd></div><div><dt>Last accessed</dt><dd>${fmt(m.lastAccessed)}</dd></div><div><dt>URL</dt><dd title="${esc(b.url)}">${esc(b.url)}</dd></div></dl>`}
+    <section class="sgroup lrows">
+      <button class="drow lrow" data-a="sumopen">${ic('text')}<span class="lt">Summary</span><span class="oval sumval"><span class="sv2">${esc(m.summary || m.aiSummary || (unread ? 'Not available' : 'Add one'))}</span>${ic('chev')}</span></button>
+      <div class="colwrap"><button class="drow lrow" data-a="colmenu" aria-haspopup="listbox" aria-expanded="${!!S.colMenu}">${ic('layers')}<span class="lt">Collection</span><span class="oval">${esc(cur || 'Others')}${ic('chev')}</span></button>
+        ${S.colMenu ? `<div class="cscrim" data-a="colmenu"></div><div class="cmenu" role="listbox" aria-label="Collection">${names.map(n => `<button role="option" aria-selected="${n === cur}" class="cm${n === cur ? ' on' : ''}" data-a="colpick" data-k="${esc(n)}"><span>${esc(n)}</span>${n === cur ? ic('check') : ''}</button>`).join('')}</div>` : ''}</div>
+      <button class="drow lrow" data-a="tagsopen">${ic('tag')}<span class="lt">Tags</span><span class="oval sumval"><span class="sv2">${allTags.length ? esc(allTags.map(x => x[0]).join(', ')) : 'Add tags'}</span>${ic('chev')}</span></button>
+      <div class="drow lrow static">${ic('calendar')}<span class="lt">Saved</span><span class="oval mono">${fmt(b.dateAdded)}</span></div>
+      <div class="drow lrow static">${ic('clock')}<span class="lt">Last accessed</span><span class="oval mono">${fmt(m.lastAccessed)}</span></div>
+    </section>
+`}
   </div>${artBand()}</div></main>`;
 };
 
@@ -284,37 +300,36 @@ const settings = () => {
   const pct = n ? Math.min(100, Math.round(tagged / n * 100)) : 0;   // always out of every bookmark, not just this run's remainder
   const fresh = tagged > 0 && job.total > 0 && job.total < n;
   const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
+  const autoOn = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, pending = Math.max(0, n - tagged);
   const statusText = !S.hasKey ? 'Make search smarter'
     : running && !job.total ? 'Looking for new bookmarks…'
     : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}…`
     : job.error ? 'Stopped before finishing'
     : caughtUp ? (S.checkNew ? `${num(S.checkNew)} new ${S.checkNew === 1 ? 'bookmark' : 'bookmarks'} indexed` : 'Nothing new to index')
     : all ? 'All indexed'
-    : tagged ? `${num(tagged)} of ${num(n)} indexed` : 'Ready when you are';
+    : tagged ? (autoOn ? `${num(pending)} not indexed yet` : `${num(pending)} new ${pending === 1 ? 'bookmark' : 'bookmarks'} found`) : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
-  const cnt = !all && (running || tagged) ? `${num(tagged)} of ${num(n)}${running ? '' : ' indexed'}` : '';
+  const cnt = running ? `${num(tagged)} of ${num(n)}` : '';
   const cells = 20, filled = n ? Math.floor(tagged / n * cells) : 0;   // twenty boxes, each a twentieth of your bookmarks
-  const mosaic = `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd"' : ''}></i>`).join('')}</div>`;
+  const mosaic = `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd" style="animation-delay:-${Date.now() % 1000}ms"' : ''}></i>`).join('')}</div>`;
   const bar = `${mosaic}<div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;
   const act = S.hasKey ? 'tagnow' : 'keyfocus', busy = S.hasKey && (running || S.rebuilding) || !n;
-  const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : all ? 'Check for new bookmarks' : 'Get everything ready';
+  const label = !S.hasKey ? 'Add a Gemini key' : running ? (job.total ? 'Working on it…' : 'Checking…') : S.rebuilding ? 'Working on it…' : job.error ? 'Try again' : !tagged ? 'Index my bookmarks' : 'Sync now';
   return `<main><div class="ttl"><h2>Settings</h2></div><div class="scroll"><div class="sets">
   <section class="hero">
     <div class="hero-top"><div class="hero-l"><div class="hero-n"><b>${num(n)}</b><span>${n === 1 ? 'bookmark' : 'bookmarks'}</span></div><p class="hst">${esc(statusText)}</p></div>
       <img class="hero-art" src="assets/img/${art}.webp" alt="" aria-hidden="true"></div>
     ${S.hasKey && !(all && !running) ? bar : ''}
-    <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide${S.hasKey && (running || S.rebuilding) ? ' busy' : ''}" data-a="${act}" ${!n ? 'disabled' : S.hasKey && (running || S.rebuilding) ? 'aria-busy="true"' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
+    ${S.hasKey && all && !running ? '' : `<button class="primary wide${S.hasKey && (running || S.rebuilding) ? ' busy' : ''}" data-a="${act}" ${!n ? 'disabled' : S.hasKey && (running || S.rebuilding) ? 'aria-busy="true"' : ''}>${S.hasKey && (running || S.rebuilding) ? `<span class="dots" aria-hidden="true" style="--ph:-${Date.now() % 1200}ms"><i></i><i></i><i></i></span> ` : S.hasKey ? ic('spark') + ' ' : ''}${label}</button>`}
   </section>
   <section class="sgroup">
-    <div class="srow"><span class="withicon">${ic('spark')}<span class="tx">Get new bookmarks ready<small>Index new saves automatically</small></span></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>
+    <div class="srow"><span class="withicon">${ic('spark')}<span class="tx">Index new bookmarks automatically<small>New saves are sent to Gemini.</small></span></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Index new bookmarks automatically')}</div>
 <button class="drow" data-a="keydlg">${ic('key')}<span><b>API key</b><small${S.hasKey ? ' class="keymask"' : ''}>${S.hasKey ? '••••••••••••' + esc(S.keyTail) : 'Not connected yet'}</small></span>${ic('chev', 'go')}</button>
-  </section>
-  <section class="sgroup"><h3>Your data</h3>
     <button class="drow" data-a="export">${ic('upload')}<span><b>Export bookmarks</b><small>HTML file, opens in any browser</small></span>${ic('chev', 'go')}</button>
     <button class="drow" data-a="import">${ic('download')}<span><b>Import bookmarks</b><small>From a bookmarks file</small></span>${ic('chev', 'go')}</button>
     <button class="drow bad" data-a="clearask">${ic('trash')}<span><b>Clear the index</b><small>Your bookmarks stay</small></span></button>
   </section>
-  </div><div class="foot-text"><p class="note2">Titles and links are sent to Google when you use Gemini.</p><p class="about">v${esc(ver)} · AI Bookmarks</p></div>${artBand()}</div></main>`;
+  </div><div class="foot-text"><p class="about">v${esc(ver)} · AI Bookmark</p></div>${artBand()}</div></main>`;
 };
 
 const SCREENS = { home, results: resultsScreen, collections, details, settings };
@@ -326,9 +341,11 @@ function render() {
   const hadDlg = !!$('.dlg', app), opener = hadDlg ? null : active?.dataset?.a;
   app.dataset.screen = S.screen;
   const foot = S.screen === 'results' && S.q && shown().length ? hintFooter() : '';
-  app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '') + (S.keyDialog ? keyDialog() : '');
+  app.innerHTML = header() + SCREENS[S.screen]() + foot + (S.toast ? `<div class="toast" role="status"><span>${esc(S.toast.msg)}</span>${S.toast.undo ? '<button data-a="undo">Undo</button>' : ''}</div>` : '') + (S.confirmClear ? clearDialog() : '') + (S.keyDialog ? keyDialog() : '') + (S.sumDialog ? sumDialog() : '') + (S.tagsDialog ? tagsDialog() : '');
   app.querySelectorAll('img[data-fav]').forEach(i => i.addEventListener('error', () => i.remove(), { once: true }));
   checkFavicons(app);
+  const cm = $('.cmenu', app);   // keep the collection menu inside the panel: open downward if it fits, upward if not
+  if (cm) { const sc = $('.scroll', app).getBoundingClientRect(), row = $('.colwrap .drow', app).getBoundingClientRect(); const below = sc.bottom - row.bottom - 8, above = row.top - sc.top - 8, up = below < 200 && above > below; cm.style.maxHeight = Math.max(140, Math.min(300, up ? above : below)) + 'px'; if (up) cm.classList.add('up'); }
   const hasDlg = !!$('.dlg', app);
   if (hasDlg && !hadDlg) dlgOpener = opener;
   if (!hasDlg && hadDlg && dlgOpener) { $(`[data-a="${dlgOpener}"]`, app)?.focus(); dlgOpener = null; }
@@ -343,16 +360,26 @@ const clearDialog = () => `<div class="scrim" data-a="clearask"><div class="dlg"
   <div class="dact"><button class="raised" data-a="clearask" autofocus>Cancel</button><button class="danger-solid" data-a="clearyes">Clear</button></div></div></div>`;
 const keyDialog = () => `<div class="scrim" data-a="keycancel"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="kt">
   <h3 id="kt">Gemini API key</h3>
-  <p>${S.hasKey ? `Connected: <span class="keymask">••••••••••••${esc(S.keyTail)}</span>` : 'A free key lets Gemini index your bookmarks.'}</p>
+  <p>${S.hasKey ? `Connected: <span class="keymask">••••••••••••${esc(S.keyTail)}</span>` : 'A free key lets Gemini index your bookmarks. Titles and links go to Google.'}</p>
   ${S.hasKey && tagRunning() ? '<p class="warn">Removing the key stops indexing.</p>' : ''}
   <form data-form="key" class="kform"><input class="well" type="password" name="k" placeholder="${S.hasKey ? 'Paste a new key to replace it' : 'Paste your Gemini key'}" aria-label="Gemini API key" autocomplete="off" autofocus>
   ${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}
   <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>
   <div class="dact"><button type="button" class="raised" data-a="keycancel">Cancel</button><button class="primary">Save</button></div></form>
   ${S.hasKey ? '<button class="clearlink" data-a="keyremove">Remove key</button>' : ''}</div></div>`;
+const tagsDialog = () => { const m = META[S.bm] || {}, tags = m.tags || [], aiTags = (m.aiTags || []).filter(t => !tags.includes(t)), all = [...tags.map(t => [t, 0]), ...aiTags.map(t => [t, 1])];
+  return `<div class="scrim" data-a="tagsclose"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="tt">
+  <h3 id="tt">Tags</h3>
+  <div class="chips dchips" role="list">${all.length ? all.map(([t, k]) => `<span class="chip" role="listitem"><span class="ct">${esc(t)}</span><button data-a="tagdel" ${k ? 'data-k="ai" ' : ''}data-t="${esc(t)}" aria-label="Remove tag ${esc(t)}">${ic('x')}</button></span>`).join('') : '<span class="hint">No tags yet.</span>'}</div>
+  <form data-form="tag" class="tagadd"><input class="well" name="t" aria-label="New tag" placeholder="Add a tag" maxlength="20" autocomplete="off" autofocus><button class="primary sm">Add</button></form>
+  <div class="dact one"><button type="button" class="raised" data-a="tagsclose">Done</button></div></div></div>`; };
+const sumDialog = () => { const m = META[S.bm] || {}; return `<div class="scrim" data-a="sumcancel"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="st">
+  <h3 id="st">Summary</h3>
+  <form data-form="sum" class="kform"><textarea class="well" name="s" rows="5" maxlength="400" placeholder="Add a short summary" autofocus>${esc(m.summary || m.aiSummary || '')}</textarea>
+  <div class="dact"><button type="button" class="raised" data-a="sumcancel">Cancel</button><button class="primary">Save</button></div></form></div></div>`; };
 let toastTimer, prefetchTimer;
 const toast = (msg, undo) => { clearTimeout(toastTimer); S.toast = { msg, undo }; render(); toastTimer = setTimeout(() => { S.toast = null; render(); }, 7000); };
-const go = (screen, patch = {}) => { Object.assign(S, { screen, confirm: false, confirmClear: false, editing: false, adding: false, addTag: false }, patch); render(); };
+const go = (screen, patch = {}) => { Object.assign(S, { screen, confirm: false, confirmClear: false, keyDialog: false, sumDialog: false, colMenu: false, editing: false, adding: false, addTag: false }, patch); render(); };
 
 // ── actions ────────────────────────────────────────────────────────────────
 const find = id => BOOKMARKS.find(b => b.id === id);
@@ -408,7 +435,7 @@ function exportHtml() {   // the standard bookmarks file every browser can impor
   const html = `<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n${walk(tree, '    ')}</DL><p>\n`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
-  a.download = 'ai-bookmarks.html'; a.click();
+  a.download = 'ai-bookmark.html'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000); say('Bookmarks exported');
 }
 
@@ -441,11 +468,17 @@ app.addEventListener('click', async e => {
     }
     case 'undo': { const f = S.toast?.undo; clearTimeout(toastTimer); S.toast = null; render(); return f?.(); }
     case 'edit': S.editing = !S.editing; return render();
-    case 'addtag': S.addTag = true; render(); return $('.tagin', app)?.focus();
     case 'tagdel': { const m = META[S.bm] || {}; await setMeta(S.bm, k === 'ai' ? { aiTags: (m.aiTags || []).filter(t => t !== el.dataset.t) } : { tags: (m.tags || []).filter(t => t !== el.dataset.t) }); return render(); }
-    case 'tagnow': { if (tagRunning()) return; const total = BOOKMARKS.length; await api({ type: 'START_TAGGING' }); S.tag = { ...(S.tag || {}), job: { running: true, total: 0, done: 0, failed: 0, updatedAt: Date.now() } }; render(); return pollTags(); }
+    case 'tagnow': return startIndexing();
+    case 'obstart': try { localStorage.setItem('ob_flow', '1'); } catch { /* storage unavailable */ } return startIndexing();
     case 'auto': { const on = S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false; await saveSettings({ autoEmbedNew: !on, autoTagNew: !on }); return render(); }
     case 'rmcol': { const r = await api({ type: 'REMOVE_CATEGORY', category: k }); say(r.success ? 'Collection deleted' : 'Could not delete'); await load(); return render(); }
+    case 'sumopen': S.sumDialog = true; return render();
+    case 'sumcancel': S.sumDialog = false; return render();
+    case 'tagsopen': S.tagsDialog = true; return render();
+    case 'tagsclose': S.tagsDialog = false; return render();
+    case 'colmenu': S.colMenu = !S.colMenu; return render();
+    case 'colpick': { S.colMenu = false; const r = await api({ type: 'SET_CATEGORY', id: S.bm, category: k }); say(r.success ? 'Moved to ' + k : 'Could not move bookmark'); await load(); return render(); }
     case 'keydlg': S.keyDialog = true; S.keyNote = ''; return render();
     case 'keycancel': S.keyDialog = false; return render();
     case 'keyremove': { const wasRunning = tagRunning(); await api({ type: 'SAVE_API_KEY', apiKey: '' }); S.hasKey = false; S.keyTail = ''; S.keyDialog = false; if (S.tag?.job) S.tag.job.running = false; say('Key removed'); toast(wasRunning ? 'Key removed. Indexing stopped.' : 'Key removed'); return; }
@@ -486,10 +519,13 @@ app.addEventListener('submit', async e => {
     const t = String(d.get('t')).trim().toLowerCase(), m = META[S.bm] || {};
     if (t && !(m.tags || []).includes(t)) await setMeta(S.bm, { tags: [...(m.tags || []), t] });
     S.addTag = false; render();
+    if (S.tagsDialog) $('.dlg input[name=t]', app)?.focus();
   }
+  if (f === 'sum') { await setMeta(S.bm, { summary: String(d.get('s')).trim() }); S.sumDialog = false; say('Summary saved'); render(); }
   if (f === 'key') {
     const k = String(d.get('k')).trim(); if (!k) return;
     const r = await api({ type: 'SAVE_API_KEY', apiKey: k }); S.hasKey = r.success; S.keyTail = r.success ? k.slice(-4) : ''; S.keyDialog = !r.success && !!$('.dlg', app); S.keyNote = r.success ? '' : 'Could not save the key.'; render();
+    if (r.success && !(S.tag?.tagged)) { try { localStorage.setItem('ob_flow', '1'); } catch { /* storage unavailable */ } startIndexing(); }   // a first key means: start now
   }
 });
 app.addEventListener('keydown', e => {
@@ -498,7 +534,7 @@ app.addEventListener('keydown', e => {
     if (f.length) { const i = f.indexOf(document.activeElement); if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); } else if (!e.shiftKey && (i === -1 || i === f.length - 1)) { e.preventDefault(); f[0].focus(); } }
   }
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('input[name=q]', app)?.focus(); return; }
-  if (e.key === 'Escape') { if (S.confirm || S.confirmClear || S.keyDialog || S.editing || S.adding || S.addTag) { S.confirm = S.confirmClear = S.keyDialog = S.editing = S.adding = S.addTag = false; render(); } return; }
+  if (e.key === 'Escape') { if (S.confirm || S.confirmClear || S.keyDialog || S.sumDialog || S.tagsDialog || S.colMenu || S.editing || S.adding || S.addTag) { S.confirm = S.confirmClear = S.keyDialog = S.sumDialog = S.tagsDialog = S.colMenu = S.editing = S.adding = S.addTag = false; render(); } return; }
   if (S.screen !== 'results' || S.loading) return;
   const r = shown().slice(0, LIST_CAP);
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); S.sel = Math.max(0, Math.min(r.length - 1, S.sel + (e.key === 'ArrowDown' ? 1 : -1))); render(); }

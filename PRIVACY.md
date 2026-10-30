@@ -2,7 +2,7 @@
 
 Effective date: 30 October 2026
 
-AI Bookmarks is a browser extension. This policy states what data it handles and where the data goes.
+AI Bookmark is a browser extension. This policy states what data it handles and where the data goes.
 
 ## Summary
 
@@ -17,7 +17,7 @@ AI Bookmarks is a browser extension. This policy states what data it handles and
 The extension saves this data in your browser storage:
 
 - your bookmark titles, addresses and folder names
-- the tags, summaries and collections made for your bookmarks
+- the tags, summaries and collections made for your bookmarks, and any you write or change yourself
 - the numeric search index (vectors) made for each bookmark
 - your settings
 - your Gemini API key, if you add one
@@ -30,8 +30,9 @@ You can use the extension with no key. In this mode, the extension sends nothing
 
 After you add a Gemini API key, the extension sends data to the Gemini API at `generativelanguage.googleapis.com`:
 
-- **When it indexes bookmarks:** the title, address and folder name of each bookmark. Gemini can also fetch and read the page at each address. This is how it writes the tags and the summary. The extension then sends each bookmark's title, tags and summary to build the search index.
+- **When it indexes bookmarks:** the title, address and folder name of each bookmark. Gemini can also fetch and read the page at each address. This is how it writes the tags and the summary. If it cannot read a page, the extension stores no summary for it. The extension then sends each bookmark's title, tags and summary to build the search index.
 - **When you search:** your search text. The extension also sends what you type, after a short pause, so the result is ready sooner. This includes text you type and then delete.
+- **Automatic indexing:** when the Settings switch "Index new bookmarks automatically" is on, the extension sends each new bookmark as soon as you save it. When the switch is off, it sends nothing new until you press Sync now.
 - **With every request:** your API key. This identifies your account to Google.
 
 Google handles this data under its own terms. Read the [Gemini API terms](https://ai.google.dev/gemini-api/terms) for how Google uses it. The terms for free keys and for paid keys can be different.

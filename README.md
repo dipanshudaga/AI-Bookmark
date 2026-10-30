@@ -1,14 +1,15 @@
-# AI Bookmarks
+# AI Bookmark
 
-Bookmarks you can actually find. AI Bookmarks uses Gemini to index the pages you save. Ask in plain words and it searches all of them.
+Stop digging through your bookmarks. Just search smart with AI. AI Bookmark uses Gemini to read the pages you save, so you can search by what a page is about, not only its title.
 
-It works in Chrome and in other Chromium browsers, for example Brave. It needs version 114 or later.
+It works in Chrome and in other Chromium browsers, for example Brave. It needs version 116 or later.
 
 ## What it does
 
 - **Search by meaning.** Type a question or a few words. The extension compares the meaning, not only the exact words.
 - **Index with Gemini.** Gemini reads each bookmark. It adds tags, a short summary and a collection.
 - **Collections.** The extension groups your bookmarks, for example Design, AI Tools and Development. A bookmark that fits no group goes to Others.
+- **Link details.** Open a bookmark to see its summary, collection and tags. Tap a row to change it. If Gemini cannot read a page, the summary says so. It does not guess.
 - **Side panel.** The panel stays open when you change tabs.
 - **Local first.** Your index stays on your device. Only the Gemini steps use the network.
 
@@ -21,15 +22,15 @@ You do not need a build step.
 3. Turn on **Developer mode**.
 4. Click **Load unpacked**.
 5. Select the repository folder.
-6. Click the puzzle-piece icon. Pin **AI Bookmarks**.
+6. Click the puzzle-piece icon. Pin **AI Bookmark**.
 
 ## First run
 
 1. Click the extension icon. The side panel opens.
 2. Search for a word. Keyword search works at once, with no key.
 3. For meaning search, get a free key from [Google AI Studio](https://aistudio.google.com/apikey).
-4. Paste the key into the card on the Home screen. Click **Save**.
-5. Click **Get started**. The extension indexes your bookmarks.
+4. Paste the key into the card on the Home screen. Click **Save**. Indexing starts at once.
+5. Watch the progress on the Home card. Open Settings for the same view.
 
 You can close the panel while the extension indexes. The work continues in the background.
 
@@ -42,11 +43,10 @@ You can close the panel while the extension indexes. The work continues in the b
 | Move in results | Press the up or down arrow. Press `Enter` to open a link. |
 | Copy a link | Select a result. Press `Cmd+C` or `Ctrl+C`. |
 | See your collections | Click the layers icon. |
-| Check for new bookmarks | Open Settings. Click **Check for new bookmarks**. |
+| Index new bookmarks | The extension does it by itself. If you turn that off in Settings, Settings shows how many new bookmarks it found. Click **Sync now**. |
 | Export your bookmarks | Open Settings. Click **Export bookmarks**. The file is an HTML bookmarks file. |
+| Change a summary, collection or tags | Open the bookmark. Tap the row you want to change. |
 | Delete a bookmark | Open its details. Click the bin icon. Click **Undo** within seven seconds to restore it. |
-
-The extension indexes new bookmarks by itself. You can turn this off in Settings.
 
 ## Privacy
 
@@ -56,6 +56,7 @@ When you use Gemini, the extension sends this data to Google:
 
 - the title, address and folder name of each bookmark
 - your search text, including what you type before you press Enter
+- the tags and summary Gemini made, to build the search index
 
 Gemini can also read the pages at your bookmark addresses.
 

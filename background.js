@@ -104,7 +104,8 @@ async function indexBookmarks() {
   const meta = extra[META_KEY] || {};
   const indexed = flat.map(bm => {
     const m = meta[bm.id] || {};
-    const categories = overrides[bm.id] ? [overrides[bm.id]] : m.aiCategory ? [m.aiCategory] : categorizeBookmark(bm);
+    // a page Gemini could not read keeps the keyword-based collection
+    const categories = overrides[bm.id] ? [overrides[bm.id]] : m.aiCategory && !(m.aiRead === false && m.aiCategory === 'Others') ? [m.aiCategory] : categorizeBookmark(bm);
     const tags = [...new Set([...(m.tags || []), ...(m.aiTags || [])])];
     const summary = m.summary || m.aiSummary || '';
     return {
@@ -323,9 +324,11 @@ function cleanTags(tags) {
 async function tagBatch(batch, apiKey) {
   const items = batch.map((b, i) => `[${i}] "${b.title}" | ${b.url} | folder: ${b.folderPath}`).join('\n');
   const prompt = `You tag a person's saved web bookmarks so they are easy to find later with natural-language search.
-Read each page if you can. If a page cannot be read, infer from the title and domain.
-Return ONLY a JSON array with one object per bookmark: {"i": <index>, "category": "<exactly one of: ${AI_CATEGORIES.join(' | ')}>", "tags": [3 to 6 short lowercase tags: what it is, what it is for, the topic, and synonyms someone might search for], "summary": "<one plain sentence, at most 25 words, what the site offers>"}.
-Category rules: choose the single best BROAD category. Group related topics under one broad category: typography, fonts, illustration, graphics, branding, 3D art, textures and design inspiration all belong to "Design"; sound effects, music, film and streaming belong to "Video & Media". If nothing clearly fits, use "Others". Never invent a category and never use any value that is not in the list.
+Read each page. Many pages are web apps that show no text, or sit behind a login. Never guess what such a page does.
+For each bookmark, set "read" to true only if you saw real page text that describes the site. Set "read" to false if the page was empty, a login wall, an error, or you only had its title and address.
+When "read" is false: "summary" must be "" (empty), and "tags" may only use words that appear in the title or the address (2 to 4 tags). Do not add a purpose, a topic or synonyms that are not in those words.
+Return ONLY a JSON array with one object per bookmark: {"i": <index>, "read": true or false, "category": "<exactly one of: ${AI_CATEGORIES.join(' | ')}>", "tags": [3 to 6 short lowercase tags when read is true: what it is, what it is for, the topic, and synonyms someone might search for], "summary": "<when read is true: one plain sentence, at most 25 words, what the site offers>"}.
+Category rules: choose the single best BROAD category. Group related topics under one broad category: typography, fonts, illustration, graphics, branding, 3D art, textures and design inspiration all belong to "Design"; sound effects, music, film and streaming belong to "Video & Media". If nothing clearly fits, or the page was not read, use "Others". Never invent a category and never use any value that is not in the list.
 
 Bookmarks:
 ${items}`;
@@ -347,7 +350,16 @@ ${items}`;
       const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
       const m = text.match(/\[[\s\S]*\]/);
       if (!m) throw new Error('Gemini returned no JSON');
-      return JSON.parse(m[0]);
+      const parsed = JSON.parse(m[0]);
+      // Gemini also reports, per address, whether it could fetch the page. A failed fetch on this site means no summary.
+      const um = data.candidates?.[0]?.urlContextMetadata?.urlMetadata || data.candidates?.[0]?.url_context_metadata?.url_metadata || [];
+      const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+      for (const o of parsed) {
+        const bm = batch[o.i]; if (!bm) continue;
+        const mine = um.filter(x => hostOf(x.retrievedUrl || x.retrieved_url) === hostOf(bm.url));
+        o.fetchFailed = mine.length > 0 && !mine.some(x => /SUCCESS/.test(String(x.urlRetrievalStatus || x.url_retrieval_status || '')));
+      }
+      return parsed;
     }
     if (![429, 500, 503].includes(res.status)) throw new Error(`Gemini error ${res.status}`);
     await sleep(2000 * (attempt + 1));
@@ -383,7 +395,8 @@ async function tagBookmarks({ force = false } = {}) {
         for (const o of out) {
           const b = batch[o.i];
           if (!b) continue;
-          meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(o.category), aiTags: cleanTags(o.tags), aiSummary: String(o.summary || '').slice(0, 220), aiAt: Date.now() };
+          const read = o.read !== false && !o.fetchFailed;
+          meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(read ? o.category : 'Others'), aiTags: cleanTags(o.tags).slice(0, read ? 6 : 4), aiSummary: read ? String(o.summary || '').slice(0, 220) : '', aiRead: read, aiAt: Date.now() };
         }
         await chrome.storage.local.set({ [META_KEY]: meta });
         done += batch.length;
@@ -514,8 +527,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
       else if (msg.type === 'GET_EMBEDDINGS_STATUS') {
         const stored = await chrome.storage.local.get(STORAGE_KEY);
-        const total = stored[STORAGE_KEY]?.bookmarks?.length || 0;
-        const embedded = Object.keys(await getEmbeddings()).length;
+        const live = stored[STORAGE_KEY]?.bookmarks || [];
+        const total = live.length;
+        const vecs = await getEmbeddings();
+        const embedded = live.filter(bm => vecs[bm.id]).length;
         sendResponse({ success: true, total, embedded });
       }
 
@@ -567,8 +582,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       else if (msg.type === 'GET_TAG_STATUS') {
         const stored = await chrome.storage.local.get([TAGJOB_KEY, META_KEY, STORAGE_KEY]);
         const meta = stored[META_KEY] || {};
-        const total = stored[STORAGE_KEY]?.bookmarks?.length || 0;
-        const tagged = Object.values(meta).filter(m => m.aiAt && m.aiCategory).length;
+        const live = stored[STORAGE_KEY]?.bookmarks || [];
+        const total = live.length;
+        const tagged = live.filter(bm => meta[bm.id]?.aiAt && meta[bm.id]?.aiCategory).length;   // only bookmarks that still exist: notes left by deleted ones must not count
         sendResponse({ success: true, job: stored[TAGJOB_KEY] || {}, tagged, total });
       }
 
@@ -634,6 +650,13 @@ if (chrome.sidePanel?.setPanelBehavior) {
   chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(e => console.warn('Side panel setup failed:', e));
 }
 
+// ─── Pick up an interrupted indexing run (browser closed, worker stopped) when the worker starts again ───
+(async () => {
+  const st = await chrome.storage.local.get([TAGJOB_KEY, API_KEY_STORAGE]);
+  const job = st[TAGJOB_KEY];
+  if (job?.running && st[API_KEY_STORAGE] && Date.now() - (job.updatedAt || 0) > 300000) tagBookmarks();   // quiet for 5 minutes: nothing is running it
+})();
+
 // ─── Keyboard shortcut: open the panel from anywhere ───
 chrome.commands?.onCommand.addListener(async cmd => {
   if (cmd !== 'open-panel') return;
@@ -652,9 +675,9 @@ let reindexTimer = null;
 function debouncedReindex(reason) {
   if (reindexTimer) clearTimeout(reindexTimer);
   reindexTimer = setTimeout(async () => {
-    console.log(`[AI Bookmarks] Re-indexing: ${reason}`);
+    console.log(`[AI Bookmark] Re-indexing: ${reason}`);
     const bookmarks = await indexBookmarks();
-    console.log(`[AI Bookmarks] Indexed ${bookmarks.length} bookmarks`);
+    console.log(`[AI Bookmark] Indexed ${bookmarks.length} bookmarks`);
 
     // Optionally auto-embed newly created bookmark
     const stored = await chrome.storage.local.get([API_KEY_STORAGE, SETTINGS_KEY, EMBEDDINGS_KEY]);

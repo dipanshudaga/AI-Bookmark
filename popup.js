@@ -233,18 +233,23 @@ const settings = () => {
   const job = S.tag?.job || {}, tagged = S.tag?.tagged || 0;
   const tagPct = tagRunning() && job.total ? Math.round(((job.done || 0) + (job.failed || 0)) / job.total * 100) : (n ? Math.round(tagged / n * 100) : 0);
   const tagNote = tagRunning() ? `Tagging ${num(job.done || 0)} of ${num(job.total || 0)}. You can close this popup.` : job.error ? `Last run: ${job.error}` : tagged ? 'Tags and summaries are used by every search mode.' : 'Not tagged yet. Takes about a minute per 60 bookmarks.';
-  const note = { ready: 'Meaning index is complete.', indexing: 'Indexing… keep this open.', partial: `Meaning index ${num(S.embedded)} of ${num(n)}`, error: 'The last indexing run failed.' }[st];
+  const note = { ready: 'Meaning index complete', indexing: 'Indexing… keep this open', partial: `Meaning index ${num(S.embedded)} of ${num(n)}`, error: 'Last indexing run failed' }[st];
+  const tagShort = tagRunning() ? `Tagging ${num(job.done || 0)} of ${num(job.total || 0)}` : job.error ? 'Last run failed' : tagged ? 'Used by every search' : 'Not tagged yet';
   const bar = (label, v) => `<div class="barrow"><div class="bar" role="progressbar" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${v}"><i style="width:${v}%"></i></div><span>${v}%</span></div>`;
   return `<main><div class="ttl"><button class="sq raised" data-a="home" aria-label="Back">${ic('back')}</button><h2>Settings</h2><span class="sp"></span></div><div class="scroll"><div class="sets">
-  <section class="sgroup"><h3>Index status</h3>
-    <div class="status"><div class="st-top"><div><b>${num(n)} <small>${n === 1 ? 'bookmark' : 'bookmarks'}</small></b><p class="note ${st === 'error' ? 'err' : ''}">${local ? 'Keyword search only. No meaning index needed.' : note}</p></div><img class="spot" src="assets/img/status.webp" alt=""></div>
-      ${local ? '' : bar('Meaning index', pct)}
-      <div class="st-act"><button class="raised sm" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button></div></div>
-  </section>
-  <section class="sgroup"><h3>AI tags</h3>
-    <div class="status"><div class="st-top"><div><b>${num(tagged)} <small>of ${num(n)} tagged</small></b><p class="note ${job.error && !tagRunning() ? 'err' : ''}">${esc(tagNote)}</p></div><img class="spot" src="assets/img/tagging.webp" alt=""></div>
-      ${bar('Tagging progress', tagPct)}
-      <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Tagging…' : (tagged ? 'Tag new' : 'Tag with Gemini')}</button></div></div>
+  <section class="sgroup"><h3>Index &amp; tags</h3>
+    <div class="statpair">
+      <div class="status compact"><h4>Index status</h4>
+        <div><b>${num(n)}</b><small>${n === 1 ? 'bookmark' : 'bookmarks'}</small></div>
+        <p class="note ${st === 'error' ? 'err' : ''}">${local ? 'Keyword search only' : note}</p>
+        ${local ? '' : bar('Meaning index', pct)}
+        <div class="st-act"><button class="raised sm" data-a="rebuild" ${S.rebuilding ? 'disabled' : ''}>${S.rebuilding ? 'Working…' : 'Reindex'}</button></div></div>
+      <div class="status compact"><h4>AI tags</h4>
+        <div><b>${num(tagged)}</b><small>of ${num(n)} tagged</small></div>
+        <p class="note ${job.error && !tagRunning() ? 'err' : ''}" title="${esc(tagNote)}">${esc(tagShort)}</p>
+        ${bar('Tagging progress', tagPct)}
+        <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Tagging…' : (tagged ? 'Tag new' : 'Tag with Gemini')}</button></div></div>
+    </div>
     <div class="srow"><span>Auto-tag new bookmarks<small>Tags new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-tag new bookmarks')}</div>
     <p class="note2">Gemini reads each site to write tags and a one-line summary. Titles and links are sent to Google.</p>
   </section>

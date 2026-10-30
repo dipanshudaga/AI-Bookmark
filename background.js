@@ -40,44 +40,53 @@ function flattenBookmarks(nodes, path = '') {
 }
 
 // ─── Auto-Categorization Rules ──────────────────────────────────────────────
+// A trailing "!" means the keyword must match as a whole word (short words like "ai" would otherwise match inside "email").
+// A leading "*" means it may appear anywhere, even glued to another word ("interactiondesign"). Other keywords match at the start of a word.
+// Keep generic words (collection, gallery, tool, guide, library...) out of this list: one weak word must not decide a category.
 const CATEGORY_KEYWORDS = {
-  'Design': ['design', 'figma', 'dribbble', 'behance', 'ui', 'ux', 'css', 'typography', 'font', 'color', 'palette', 'gradient', 'shader', 'icon', 'illustration', 'layout', 'motion', 'animation', 'three.js', 'webgl', '3d', 'poster', 'packaging', 'landing', 'inspiration', 'aesthetic', 'paper.design', 'pen.dev', 'threeui', 'landdding', 'recraft', 'inspora', 'recent.design', 'collectui', 'screensdesign', 'deck.gallery'],
-  'AI Tools': ['ai', 'gpt', 'llm', 'openai', 'claude', 'gemini', 'midjourney', 'stable diffusion', 'dall-e', 'image generat', 'krea', 'reve', 'meigen', 'imageory', 'quiver', 'anthropic', 'mistral', 'huggingface'],
-  'Development': ['github', 'code', 'programming', 'developer', 'react', 'javascript', 'python', 'api', 'sdk', 'npm', 'framework', 'library', 'codepen', 'markdown', 'markitdown', 'vite', 'next.js', 'typescript', 'rust', 'golang', 'docker'],
-  'Video & Media': ['video', 'youtube', 'vimeo', 'stream', 'movie', 'film', 'animation', 'stop motion', 'tavus', 'ltx', 'decart', 'cardboard', 'sound', 'audio', 'music', 'podcast', 'muesli'],
-  'AI Agents': ['agent', 'automation', 'workflow', 'manus', 'hermes', 'langchain', 'autogen', 'crew', 'browser-use', 'agentic'],
-  'Data Visualization': ['data viz', 'chart', 'graph', 'visualization', 'infographic', 'pudding', 'information is beautiful', 'ourworldindata', 'diagram', 'observable', 'd3'],
-  'Archives & Museums': ['archive', 'museum', 'collection', 'gallery', 'smithsonian', 'cooper hewitt', 'poster house', 'letterform', 'internet archive'],
-  'Productivity': ['tool', 'productivity', 'workflow', 'notion', 'note', 'calendar', 'task', 'project', 'delphi', 'ascii', 'lummi', 'grainrad', 'playgrnd', 'linear', 'raycast'],
-  'Prompts & Resources': ['prompt', 'resource', 'template', 'guide', 'tutorial', 'course', 'learn', 'skill', 'skillry', 'skills.sh', 'youmind'],
+  'Design': ['*design', 'font', 'texture', 'hdri', 'framer', 'webflow', 'canva', 'adobe', 'pinterest', 'mobbin', 'figma', 'dribbble', 'behance', 'ux!', 'ui design', 'ui kit', 'icons', 'typography', 'typeface', 'palette', 'gradient', 'shader', 'illustration', 'poster', 'packaging', 'landing page', 'aesthetic', 'branding', 'moodboard', 'awwwards', 'webgl', 'three.js', 'paper.design', 'pen.dev', 'threeui', 'landdding', 'recraft', 'inspora', 'recent.design', 'collectui', 'screensdesign', 'deck.gallery', 'inspiration'],
+  'AI Tools': ['ai!', 'gpt!', 'llm!', 'openai', 'claude', 'gemini', 'midjourney', 'stable diffusion', 'dall-e', 'image generat', 'krea!', 'reve!', 'meigen', 'imageory', 'quiver', 'anthropic', 'mistral', 'huggingface'],
+  'Development': ['github', 'code!', 'programming', 'developer', 'react', 'javascript', 'python', 'api!', 'sdk!', 'npm!', 'framework', 'codepen', 'markdown', 'markitdown', 'vite!', 'next.js', 'typescript', 'rust!', 'golang', 'docker', 'css!'],
+  'Video & Media': ['video', 'youtube', 'vimeo', 'stream', 'movie', 'film', 'stop motion', 'tavus', 'ltx!', 'decart', 'cardboard', 'sound', 'audio', 'music', 'podcast', 'muesli'],
+  'AI Agents': ['agent', 'automation', 'manus!', 'hermes', 'langchain', 'autogen', 'crew!', 'browser-use', 'agentic'],
+  'Data Visualization': ['data viz', 'chart', 'visualization', 'infographic', 'pudding', 'information is beautiful', 'ourworldindata', 'diagram', 'observable', 'd3!'],
+  'Archives & Museums': ['museum', 'smithsonian', 'cooper hewitt', 'poster house', 'letterform archive', 'internet archive', 'archive.org', 'archives', 'heritage'],
+  'Productivity': ['productivity', 'notion', 'calendar', 'todo', 'kanban', 'delphi', 'ascii!', 'lummi', 'grainrad', 'playgrnd', 'linear.app', 'raycast'],
+  'Prompts & Resources': ['prompt', 'tutorial', 'course', 'skill', 'skills.sh', 'skillry', 'youmind'],
 };
+const escapeRe = w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CATEGORY_MATCHERS = Object.entries(CATEGORY_KEYWORDS).map(([cat, kws]) => [cat, kws.map(kw => {
+  const exact = kw.endsWith('!'), anywhere = kw.startsWith('*');
+  const word = escapeRe(kw.replace(/^\*|!$/g, '').toLowerCase());
+  return new RegExp((anywhere ? '' : '(^|[^a-z0-9])') + word + (exact ? '($|[^a-z0-9])' : ''));
+})]);
+const MIN_SCORE = 3;          // one hit in the title or the URL is enough; a folder name alone is not
+const MAX_CATEGORIES = 2;
 
 function categorizeBookmark(bookmark) {
-  const text = `${bookmark.title} ${bookmark.url} ${bookmark.folderPath}`.toLowerCase();
-  const categories = [];
+  const title = (bookmark.title || '').toLowerCase();
+  let url = (bookmark.url || '').toLowerCase();
+  try { const u = new URL(bookmark.url); url = (u.hostname + u.pathname).toLowerCase(); } catch { /* keep raw url */ }
+  const folder = (bookmark.folderPath || '').toLowerCase();
 
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    for (const kw of keywords) {
-      if (text.includes(kw.toLowerCase())) {
-        categories.push(category);
-        break;
-      }
+  const scored = [];
+  for (const [category, matchers] of CATEGORY_MATCHERS) {
+    let score = 0;
+    for (const re of matchers) {
+      if (re.test(title)) score += 3;
+      if (re.test(url)) score += 3;
+      if (re.test(folder)) score += 1;
     }
+    if (score >= MIN_SCORE) scored.push([category, score]);
+  }
+  scored.sort((a, b) => b[1] - a[1]);
+  if (scored.length) {
+    const cutoff = Math.max(MIN_SCORE, scored[0][1] * 0.6);
+    return scored.filter(([, sc]) => sc >= cutoff).slice(0, MAX_CATEGORIES).map(([c]) => c);
   }
 
-  // Fallback: use folder path as category
-  if (categories.length === 0 && bookmark.folderPath) {
-    const folders = bookmark.folderPath.split(' / ').filter(f => f && f !== 'Bookmarks bar' && f !== 'Other bookmarks');
-    if (folders.length > 0) {
-      categories.push(folders[folders.length - 1]);
-    }
-  }
-
-  if (categories.length === 0) {
-    categories.push('Uncategorized');
-  }
-
-  return categories;
+  // No confident match: "Others". Never force-fit a bookmark into a category.
+  return ['Others'];
 }
 
 // ─── Index all bookmarks ────────────────────────────────────────────────────

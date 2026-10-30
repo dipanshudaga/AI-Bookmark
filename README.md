@@ -1,6 +1,6 @@
 # AI Bookmarks
 
-AI Bookmarks is a browser extension. It helps you find a saved page by its meaning. You type a plain question, such as "3d printing models". The extension shows the bookmarks that answer it.
+Find any bookmark by its meaning. AI Bookmarks is a browser extension that uses Gemini to index the pages you save. You type a plain question. The extension shows the bookmarks that answer it.
 
 It works in Chrome and in other Chromium browsers, for example Brave. It needs version 114 or later.
 
@@ -73,15 +73,19 @@ Your API key stays in your browser. The extension sends it only to Google. Read 
 
 ## Project files
 
-| File | Purpose |
-| --- | --- |
-| `manifest.json` | Extension settings. |
-| `background.js` | Background worker. It indexes, searches and calls Gemini. |
-| `popup.html`, `popup.js`, `popup.css` | The side panel interface. |
-| `assets/`, `fonts/`, `icons/` | Pictures, fonts and icons. |
-| `DESIGN.md` | The design rules. Sizes, spacing, colour and buttons. |
-| `PRIVACY.md` | The privacy policy. |
-| `STORE_LISTING.md` | Text for the Chrome Web Store page. |
+```
+├── manifest.json          # Extension settings
+├── background.js          # Indexes, searches and calls Gemini
+├── popup.html             # Side panel page
+├── popup.js               # Side panel logic
+├── popup.css              # Side panel styles and design tokens
+├── assets/                # Pictures and collection badges
+├── fonts/                 # Inter, Space Grotesk, JetBrains Mono
+├── icons/                 # Extension icons
+├── DESIGN.md              # Design rules
+├── PRIVACY.md             # Privacy policy
+└── CHROME_WEB_STORE.md    # Everything needed for the store page
+```
 
 ## Develop
 
@@ -90,3 +94,7 @@ There are no dependencies. Edit a file. Open the extensions page. Click the relo
 To test as a new user, uninstall the extension and load it again. The browser deletes its saved data.
 
 Follow `DESIGN.md` for all interface work. Use the size, space and colour tokens at the top of `popup.css`.
+
+## Licence
+
+MIT. See `LICENSE`.

@@ -377,3 +377,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .rt{margin-top:var(--sp-2)}
 .rt i{font-weight:var(--fw-regular);font-size:var(--fs-xs);line-height:1.3;padding:2px var(--sp-2);border-radius:var(--r-sm);background:var(--tile);color:var(--ink-2);max-width:96px}
 .rt i.m{background:var(--tile);color:var(--ink-2)}
+/* collection rows keep their own centred layout */
+.crow .main{align-items:center;padding:var(--sp-2) var(--sp-2)}

@@ -245,3 +245,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .status.compact .barrow{gap:var(--sp-2)}
 .status.compact .barrow span{min-width:30px}
 .status.compact .st-act .sm{width:100%}
+
+.keylink{font-size:var(--fs-sm);align-self:flex-start}

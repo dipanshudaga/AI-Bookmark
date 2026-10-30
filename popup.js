@@ -250,13 +250,13 @@ const settings = () => {
         ${bar('Tagging progress', tagPct)}
         <div class="st-act"><button class="primary sm" data-a="tagnow" ${tagRunning() || !n ? 'disabled' : ''}>${ic('spark')} ${tagRunning() ? 'Tagging…' : (tagged ? 'Tag new' : 'Tag with Gemini')}</button></div></div>
     </div>
-    <div class="srow"><span>Auto-tag new bookmarks<small>Tags new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-tag new bookmarks')}</div>
-    <p class="note2">Gemini reads each site to write tags and a one-line summary. Titles and links are sent to Google.</p>
   </section>
   <section class="sgroup"><h3>Search</h3>
-    <div class="srow"><span>Search engine<small>How your queries are matched</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div class="srow"><span>Search engine<small>Auto: instant for short searches, Gemini for longer questions</small></span><select class="well" data-a="engine" aria-label="Search engine">${ENGINES.map(([v, l]) => `<option value="${v}" ${S.engine === v ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="srow"><span>Auto index new bookmarks<small>Index new saves as they happen</small></span>${sw('autoindex', S.settings.autoEmbedNew !== false, 'Auto index new bookmarks')}</div>
-    <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div></form>
+    <div class="srow"><span>Auto-tag new bookmarks<small>Tags new saves after your first run</small></span>${sw('autotag', S.settings.autoTagNew !== false, 'Auto-tag new bookmarks')}</div>
+    <form class="srow col" data-form="key"><span>Gemini API key<small>${esc(S.keyNote || (S.hasKey ? 'A key is saved on this device.' : 'No key saved.'))}</small></span><div class="keyline"><input class="well" type="password" name="k" placeholder="Paste a new key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></div><a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Create a key in Google AI Studio ↗</a></form>
+    <p class="note2">Gemini reads each site to write tags and a one-line summary. Titles and links are sent to Google.</p>
   </section>
   <section class="sgroup"><h3>Appearance</h3>
     <div class="srow"><span>Show favicons<small>Site icons next to each bookmark</small></span>${sw('favicons', !S.noFav, 'Show favicons')}</div>

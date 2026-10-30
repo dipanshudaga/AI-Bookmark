@@ -8,6 +8,8 @@ const SETTINGS_KEY = 'ai_bookmark_settings';
 const OVERRIDES_KEY = 'ai_bookmark_category_overrides'; // { bookmarkId: category }
 const CUSTOM_CATS_KEY = 'ai_bookmark_custom_categories'; // [name]
 const TAGJOB_KEY = 'ai_bookmark_tagjob'; // { running, total, done, failed, error, updatedAt }
+const STOPWORDS = new Set('a an the of for to in on and or with about how what is are my that'.split(' '));
+const LOCAL_CONFIDENT = 5;   // a single title, tag or category hit is enough to trust the instant local match
 const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // fast, can read pages through the url_context tool
 const META_KEY = 'ai_bookmark_meta'; // { bookmarkId: { tags: [], summary, lastAccessed } }
 const DEFAULT_API_KEY = 'REMOVED';
@@ -452,8 +454,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         let results = [];
         let engineUsed = 'Local';
 
+        // 0. Auto: answer short, plain searches instantly and offline. Longer natural-language questions,
+        //    or short ones the local match cannot answer, go on to the meaning search below.
+        if (requestedEngine === 'auto') {
+          const words = (String(msg.query).toLowerCase().match(/[\p{L}\p{N}'-]+/gu) || []).filter(t => t.length > 1 && !STOPWORDS.has(t));
+          if (words.length <= 2) {
+            const local = searchLocal(msg.query, bookmarks);
+            if (local.length && local[0].score >= LOCAL_CONFIDENT) { results = local; engineUsed = 'Local (instant)'; }
+          }
+        }
+
         // 1. Google Embeddings Mode
-        if ((requestedEngine === 'embeddings' || (requestedEngine === 'auto' && Object.keys(embeddingsMap).length > 5)) && apiKey) {
+        if (results.length === 0 && (requestedEngine === 'embeddings' || (requestedEngine === 'auto' && Object.keys(embeddingsMap).length > 5)) && apiKey) {
           try {
             results = await searchWithEmbeddings(msg.query, bookmarks, apiKey);
             engineUsed = 'Google Embeddings';

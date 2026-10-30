@@ -185,7 +185,7 @@ const rowTags = b => {
   const tags = [...new Set([...(m.tags || []), ...(m.aiTags || []), ...(b.tags || [])])];
   const terms = S.q.toLowerCase().split(/\s+/).filter(t => t.length > 1 && !STOP.has(t));
   const hit = t => terms.some(x => t.includes(x));
-  return tags.map(t => [t, hit(t)]).sort((a, c) => c[1] - a[1]).slice(0, 3);
+  return tags.map(t => [t, hit(t)]).sort((a, c) => c[1] - a[1]).slice(0, 2);
 };
 const row = (b, o = {}) => {
   const name = b.title || host(b.url), tags = rowTags(b);

@@ -369,3 +369,11 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .sgroup .drow{margin-inline:calc(var(--sp-4) * -1);width:calc(100% + var(--sp-4) * 2);padding-inline:var(--sp-4)}
 .hdr{height:calc(56px + var(--sp-4));padding-top:var(--sp-4)}
 .pintip{color:var(--ink-3);font-size:var(--fs-sm)}
+
+/* rows: more room between links; tags: fewer, smaller, lighter */
+.row .main{padding:var(--sp-4) var(--sp-2);align-items:flex-start}
+.row .fav{margin-top:var(--sp-1)}
+.row .more-btn{align-self:center}
+.rt{margin-top:var(--sp-2)}
+.rt i{font-weight:var(--fw-regular);font-size:var(--fs-xs);line-height:1.3;padding:2px var(--sp-2);border-radius:var(--r-sm);background:var(--tile);color:var(--ink-2);max-width:96px}
+.rt i.m{background:var(--tile);color:var(--ink-2)}

@@ -278,7 +278,7 @@ const settings = () => {
   const pct = tagPct;
   const fresh = tagged > 0 && job.total > 0 && job.total < n;
   const caughtUp = all && !running && job.total === 0 && Date.now() - (job.updatedAt || 0) < 20000;
-  const statusText = !S.hasKey ? 'Keyword search is ready'
+  const statusText = !S.hasKey ? 'Make search smarter'
     : running && !job.total ? 'Looking for new bookmarks…'
     : running ? (fresh ? `Tagging ${num(job.total)} new ${job.total === 1 ? 'bookmark' : 'bookmarks'}… ${num(job.done || 0)} of ${num(job.total)}` : `Tagging… ${num(job.done || 0)} of ${num(job.total)}`)
     : job.error ? 'Stopped before finishing'
@@ -307,7 +307,6 @@ const settings = () => {
     ${S.hasKey ? `${bar}
     <div class="fkeys">${legend ? `<span class="fl">${esc(legend)}</span>` : ''}${keys}</div>` : ''}
     <button class="${all && !running && S.hasKey ? 'raised' : 'primary'} wide" data-a="${act}" ${busy ? 'disabled' : ''}>${S.hasKey ? ic('spark') + ' ' : ''}${label}</button>
-    ${S.hasKey ? '' : '<p class="hint">A free key lets Gemini tag and categorise your bookmarks.</p>'}
   </section>
   <section class="sgroup"><h3>Automatic</h3>
     <div class="srow"><span>Get new bookmarks ready<small>Tag and categorise new saves automatically</small></span>${sw('auto', S.settings.autoEmbedNew !== false && S.settings.autoTagNew !== false, 'Get new bookmarks ready automatically')}</div>

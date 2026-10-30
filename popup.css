@@ -336,3 +336,5 @@ kbd{font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--ink-2);borde
 .raised.yes:hover{background:var(--danger);border-color:var(--danger);color:#fff;filter:brightness(.9)}
 .srow.col .keyline,.srow.col .keylink{margin-left:calc(20px + var(--sp-3))}
 .keylink{font-weight:var(--fw-regular)}
+.drow:hover{background:var(--sel);color:var(--ink)}
+.drow.bad:hover{background:var(--danger-tint);color:var(--danger);border-color:var(--line)}

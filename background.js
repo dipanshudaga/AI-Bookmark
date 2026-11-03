@@ -367,6 +367,36 @@ ${items}`;
   throw new Error('Gemini is busy, try again in a minute');
 }
 
+// Pages Gemini could not read (login walls, password pages, empty app shells) often have a readable home or About page.
+// Try those instead, one level at a time, and keep the first one that reads.
+const FALLBACK_PATHS = ['/', '/about', '/about-us', '/info'];
+// A deep link (an article or blog post) keeps no summary: the site's summary would be about the wrong thing.
+function isArticleLink(url) {
+  try {
+    const segs = new URL(url).pathname.split('/').filter(Boolean);
+    return segs.length >= 2 || (segs[0] || '').split('-').length >= 4 || /\b(19|20)\d{2}\b/.test(segs.join('/'));
+  } catch { return false; }
+}
+async function readViaSitePages(unread, apiKey) {
+  unread = unread.filter(b => !isArticleLink(b.url));
+  const found = new Map();
+  for (const path of FALLBACK_PATHS) {
+    const pending = unread.filter(b => !found.has(b.id));
+    const tries = [];
+    for (const b of pending) {
+      let u; try { u = new URL(b.url); } catch { continue; }
+      if (u.pathname.replace(/\/$/, '') === path.replace(/\/$/, '') && !u.search) continue;   // already tried this exact address
+      tries.push({ ...b, url: u.origin + path });
+    }
+    if (!tries.length) continue;
+    try {
+      const out = await tagBatch(tries, apiKey);
+      for (const o of out) { const t = tries[o.i]; if (t && o.read !== false && !o.fetchFailed) found.set(t.id, o); }
+    } catch (e) { if (/API key|403|401/.test(e.message)) throw e; }
+  }
+  return found;
+}
+
 async function writeJob(patch) {
   const cur = (await chrome.storage.local.get(TAGJOB_KEY))[TAGJOB_KEY] || {};
   await chrome.storage.local.set({ [TAGJOB_KEY]: { ...cur, ...patch, updatedAt: Date.now() } });
@@ -382,7 +412,7 @@ async function tagBookmarks({ force = false } = {}) {
     if (!apiKey) throw new Error('Add a Gemini API key in Settings first.');
     const bookmarks = stored[STORAGE_KEY]?.bookmarks || (await indexBookmarks());
     let meta = stored[META_KEY] || {};
-    const todo = bookmarks.filter(b => b.url && /^https?:/.test(b.url) && (force || !meta[b.id]?.aiAt || !meta[b.id]?.aiCategory));
+    const todo = bookmarks.filter(b => b.url && /^https?:/.test(b.url) && (force || !meta[b.id]?.aiAt || !meta[b.id]?.aiCategory || (meta[b.id].aiRead === false && !meta[b.id].aiTried)));
     await writeJob({ running: true, total: todo.length, done: 0, failed: 0, error: null });
     let done = 0, failed = 0, lastError = null;
     for (let i = 0; i < todo.length; i += TAG_BATCH) {
@@ -391,12 +421,16 @@ async function tagBookmarks({ force = false } = {}) {
       if (!liveKey) { lastError = 'Gemini key removed'; break; }   // the key was deleted mid-run: stop cleanly
       try {
         const out = await tagBatch(batch, liveKey);
+        const unread = out.filter(o => (o.read === false || o.fetchFailed) && batch[o.i]).map(o => batch[o.i]);
+        const viaSite = unread.length ? await readViaSitePages(unread, liveKey) : new Map();
         meta = (await chrome.storage.local.get(META_KEY))[META_KEY] || meta;
-        for (const o of out) {
+        for (let o of out) {
           const b = batch[o.i];
           if (!b) continue;
+          const alt = viaSite.get(b.id);
+          if (alt) o = { ...alt, i: o.i, fetchFailed: false };
           const read = o.read !== false && !o.fetchFailed;
-          meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(read ? o.category : 'Others'), aiTags: cleanTags(o.tags).slice(0, read ? 6 : 4), aiSummary: read ? String(o.summary || '').slice(0, 220) : '', aiRead: read, aiAt: Date.now() };
+          meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(read ? o.category : 'Others'), aiTags: cleanTags(o.tags).slice(0, read ? 6 : 4), aiSummary: read ? String(o.summary || '').slice(0, 220) : '', aiRead: read, aiTried: true, aiAt: Date.now() };
         }
         await chrome.storage.local.set({ [META_KEY]: meta });
         done += batch.length;
@@ -665,7 +699,8 @@ chrome.commands?.onCommand.addListener(async cmd => {
 });
 
 // ─── Auto-index on install ──────────────────────────────────────────────────
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async details => {
+  if (details.reason === 'update' && (await chrome.storage.local.get(API_KEY_STORAGE))[API_KEY_STORAGE]) tagBookmarks();   // retry earlier unreadable pages through their site pages
   indexBookmarks();
 });
 

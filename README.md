@@ -30,7 +30,7 @@ You need a Chromium browser, version 116 or later.
 
 1. Click the icon. The side panel opens.
 2. Search for a word. Keyword search works at once, with no key.
-3. For search by meaning, create a free key in [Google AI Studio](https://aistudio.google.com/apikey).
+3. For search by meaning, create a free key in [Google AI Studio](https://aistudio.google.com/api-keys).
 4. Paste the key into the card on the Home screen. Click **Save**. Indexing starts at once.
 5. Read the progress on the Home card or in Settings. You can close the panel. Indexing continues in the background.
 

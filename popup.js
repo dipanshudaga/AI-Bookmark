@@ -216,9 +216,9 @@ const onboard = () => {
   if (obSeen() || S.loading) return '';
   if (!S.hasKey) return `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>Make search smarter</h3><p>Add a free Gemini key to index your bookmarks. Titles and links go to Google.</p>
       <form class="keyline" data-form="key"><input class="well" type="password" name="k" placeholder="Paste Gemini key" aria-label="Gemini API key" autocomplete="off"><button class="primary sm">Save</button></form>
-      <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>${pinTip()}</section>`;
+      <a class="link keylink" href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>${pinTip()}</section>`;
   if (flow && tagged < n && !running && S.tag?.job?.error) return `<section class="ob"><h3>Indexing stopped</h3><p>Gemini did not accept the request. Check your key in Settings, then try again.</p><button class="primary" data-a="obstart">${ic('spark')} Try again</button><button class="link keylink" data-a="settings">Open Settings</button></section>`;
-  if (flow && tagged < n) return `<section class="ob"><h3>Indexing your bookmarks</h3><p>Gemini is reading them. This takes a few minutes. You can keep searching.</p>${progressBoxes(n, tagged, running)}<button class="link keylink" data-a="settings">See progress in Settings</button></section>`;
+  if (flow && tagged < n) return `<section class="ob"><h3>Indexing your bookmarks</h3><p>Gemini is reading them. This takes a few minutes.</p>${progressBoxes(n, tagged, running)}</section>`;
   if (flow) return `<section class="ob"><button class="obx" data-a="obskip" aria-label="Dismiss">×</button><h3>All indexed</h3><p>Search now understands what each page is about.</p></section>`;
   if (!tagged && !running) return `<section class="ob"><h3>Key saved</h3><p>Next, Gemini indexes your bookmarks.</p><button class="primary" data-a="obstart">${ic('spark')} Start indexing</button></section>`;
   return '';
@@ -364,7 +364,7 @@ const keyDialog = () => `<div class="scrim" data-a="keycancel"><div class="dlg" 
   ${S.hasKey && tagRunning() ? '<p class="warn">Removing the key stops indexing.</p>' : ''}
   <form data-form="key" class="kform"><input class="well" type="password" name="k" placeholder="${S.hasKey ? 'Paste a new key to replace it' : 'Paste your Gemini key'}" aria-label="Gemini API key" autocomplete="off" autofocus>
   ${S.keyNote ? `<p class="hint">${esc(S.keyNote)}</p>` : ''}
-  <a class="link keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>
+  <a class="link keylink" href="https://aistudio.google.com/api-keys" target="_blank" rel="noopener noreferrer">Get a free key ↗</a>
   <div class="dact"><button type="button" class="raised" data-a="keycancel">Cancel</button><button class="primary">Save</button></div></form>
   ${S.hasKey ? '<button class="clearlink" data-a="keyremove">Remove key</button>' : ''}</div></div>`;
 const tagsDialog = () => { const m = META[S.bm] || {}, tags = m.tags || [], aiTags = (m.aiTags || []).filter(t => !tags.includes(t)), all = [...tags.map(t => [t, 0]), ...aiTags.map(t => [t, 1])];

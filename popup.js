@@ -304,12 +304,12 @@ const settings = () => {
   const statusText = !S.hasKey ? 'Make search smarter'
     : running && !job.total ? 'Looking for new bookmarks…'
     : running ? `${WORDS[Math.floor(Date.now() / 2600) % WORDS.length]}…`
-    : job.error ? 'Stopped before finishing'
+    : job.error ? (pending ? `Stopped. ${num(pending)} ${pending === 1 ? 'bookmark' : 'bookmarks'} left to index` : 'Stopped before finishing')
     : caughtUp ? (S.checkNew ? `${num(S.checkNew)} new ${S.checkNew === 1 ? 'bookmark' : 'bookmarks'} indexed` : 'Nothing new to index')
     : all ? 'All indexed'
     : tagged ? (autoOn ? `${num(pending)} not indexed yet` : `${num(pending)} new ${pending === 1 ? 'bookmark' : 'bookmarks'} found`) : 'Ready when you are';
   const art = !S.hasKey || (job.error && !running) ? 'state-error' : all && !running ? 'state-done' : 'state-working';
-  const cnt = running ? `${num(tagged)} of ${num(n)}` : '';
+  const cnt = !all && n ? `${num(tagged)} of ${num(n)} indexed` : '';
   const cells = 20, filled = n ? Math.floor(tagged / n * cells) : 0;   // twenty boxes, each a twentieth of your bookmarks
   const mosaic = `<div class="mosaic" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}">${Array.from({ length: cells }, (_, i) => `<i${i < filled ? ' class="on"' : i === filled && running ? ' class="hd" style="animation-delay:-${Date.now() % 1000}ms"' : ''}></i>`).join('')}</div>`;
   const bar = `${mosaic}<div class="fkeys fmeta"><span>${cnt}</span><span>${pct}%</span></div>`;

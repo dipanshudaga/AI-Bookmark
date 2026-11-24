@@ -349,8 +349,11 @@ ${items}`;
       const data = await res.json();
       const text = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('');
       const m = text.match(/\[[\s\S]*\]/);
-      if (!m) throw new Error('Gemini returned no JSON');
-      const parsed = JSON.parse(m[0]);
+      let parsed; try { parsed = m && JSON.parse(m[0]); } catch { parsed = null; }
+      if (!Array.isArray(parsed)) {   // a page read sometimes comes back as prose or cut-off JSON: ask again before failing the run
+        if (attempt === 2) throw new Error('Gemini gave an unreadable answer, try again');
+        await sleep(1500); continue;
+      }
       // Gemini also reports, per address, whether it could fetch the page. A failed fetch on this site means no summary.
       const um = data.candidates?.[0]?.urlContextMetadata?.urlMetadata || data.candidates?.[0]?.url_context_metadata?.url_metadata || [];
       const hostOf = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
@@ -415,6 +418,7 @@ async function tagBookmarks({ force = false } = {}) {
     const todo = bookmarks.filter(b => b.url && /^https?:/.test(b.url) && (force || !meta[b.id]?.aiAt || !meta[b.id]?.aiCategory || (meta[b.id].aiRead === false && !meta[b.id].aiTried)));
     await writeJob({ running: true, total: todo.length, done: 0, failed: 0, error: null });
     let done = 0, failed = 0, lastError = null;
+    const doneIds = [];
     for (let i = 0; i < todo.length; i += TAG_BATCH) {
       const batch = todo.slice(i, i + TAG_BATCH);
       const liveKey = (await chrome.storage.local.get(API_KEY_STORAGE))[API_KEY_STORAGE];
@@ -433,17 +437,35 @@ async function tagBookmarks({ force = false } = {}) {
           meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(read ? o.category : 'Others'), aiTags: cleanTags(o.tags).slice(0, read ? 6 : 4), aiSummary: read ? String(o.summary || '').slice(0, 220) : '', aiRead: read, aiTried: true, aiAt: Date.now() };
         }
         await chrome.storage.local.set({ [META_KEY]: meta });
-        done += batch.length;
+        done += batch.length; doneIds.push(...batch.map(b => b.id));
       } catch (e) {
-        failed += batch.length; lastError = e.message;
-        if (/API key|403|401/.test(e.message)) break;
+        if (/API key|403|401/.test(e.message)) { failed += batch.length; lastError = e.message; break; }
+        // One bad address (Gemini refuses it, or answers with nothing usable) must not block the rest. Try each bookmark alone.
+        meta = (await chrome.storage.local.get(META_KEY))[META_KEY] || meta;
+        for (const b of batch) {
+          try {
+            const [o] = await tagBatch([b], liveKey);
+            const read = !!o && o.read !== false && !o.fetchFailed;
+            meta[b.id] = { ...(meta[b.id] || {}), aiCategory: normalizeCategory(read ? o.category : 'Others'), aiTags: cleanTags(o?.tags).slice(0, read ? 6 : 4), aiSummary: read ? String(o.summary || '').slice(0, 220) : '', aiRead: read, aiTried: true, aiAt: Date.now() };
+            done++; doneIds.push(b.id);
+          } catch (e2) {
+            if (/Gemini error 4\d\d|unreadable answer/.test(e2.message) && !/429|403|401/.test(e2.message)) {   // this address cannot be read: keep it as unread and move on
+              meta[b.id] = { ...(meta[b.id] || {}), aiCategory: 'Others', aiTags: cleanTags(String(b.title || '').split(/\W+/)).slice(0, 4), aiSummary: '', aiRead: false, aiTried: true, aiAt: Date.now() };
+              done++; doneIds.push(b.id);
+            } else { failed++; lastError = e2.message; }
+          }
+        }
+        await chrome.storage.local.set({ [META_KEY]: meta });
       }
       await writeJob({ done, failed, error: lastError });
     }
     // bake the new tags into the search index and rebuild embeddings so meaning search sees them
     const reindexed = await indexBookmarks();
     if (done > 0 && (await chrome.storage.local.get(API_KEY_STORAGE))[API_KEY_STORAGE]) {
-      await chrome.storage.local.remove(EMBEDDINGS_KEY);
+      // only the bookmarks that just changed need new vectors; wiping all of them re-embeds the whole library for one new save
+      const embs = (await chrome.storage.local.get(EMBEDDINGS_KEY))[EMBEDDINGS_KEY] || {};
+      for (const id of doneIds) delete embs[id];
+      await chrome.storage.local.set({ [EMBEDDINGS_KEY]: embs });
       batchEmbedBookmarks(reindexed, apiKey).catch(e => console.warn('Re-embed after tagging failed:', e));
     }
     await writeJob({ running: false, done, failed, error: lastError });

@@ -30,14 +30,14 @@ The dashboard changes its wording from time to time. If a label differs from thi
 Run this in the project folder. It makes a zip with only the files the extension needs.
 
 ```bash
-zip -r ai-bookmark-1.1.1.zip manifest.json background.js popup.html popup.js popup.css assets fonts icons -x "*.DS_Store"
+zip -r ai-bookmark-1.1.2.zip manifest.json background.js popup.html popup.js popup.css assets fonts icons -x "*.DS_Store"
 ```
 
 The zip is about 0.9 MB. Upload it in the dashboard with **Add new item**. Do not include `store/`, `design-source/`, `docs/` or the markdown files.
 
 Before you zip:
 
-- Check `manifest.json` has the right `version`. It is `1.1.1` now. Version `1.1.0` is live, and the store rejects a version it has already seen. Raise it for every new upload.
+- Check `manifest.json` has the right `version`. It is `1.1.2` now. Version `1.1.1` is live, and the store rejects a version it has already seen. Raise it for every new upload.
 - Test the zip. Remove the extension. Load the unzipped folder. Run the first-run steps.
 
 ## 3. Store listing tab
